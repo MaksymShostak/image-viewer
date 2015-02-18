@@ -42,6 +42,8 @@ _COM_SMARTPTR_TYPEDEF(ID2D1SolidColorBrush, __uuidof(ID2D1SolidColorBrush));
 _COM_SMARTPTR_TYPEDEF(ID2D1StrokeStyle, __uuidof(ID2D1StrokeStyle));
 _COM_SMARTPTR_TYPEDEF(ID2D1TessellationSink, __uuidof(ID2D1TessellationSink));
 _COM_SMARTPTR_TYPEDEF(ID2D1TransformedGeometry, __uuidof(ID2D1TransformedGeometry));
+//New interface
+_COM_SMARTPTR_TYPEDEF(ID2D1DeviceContext, __uuidof(ID2D1DeviceContext));
 
 #endif
 

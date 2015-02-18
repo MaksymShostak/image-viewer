@@ -184,6 +184,7 @@
     <ClInclude Include="jpegint.h" />
     <ClInclude Include="jpeglib.h" />
     <ClInclude Include="jpegtran.h" />
+    <ClInclude Include="jversion.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="SmartPointerTypeDefs.h" />
     <ClInclude Include="stdafx.h" />

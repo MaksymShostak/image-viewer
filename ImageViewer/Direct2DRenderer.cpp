@@ -140,11 +140,6 @@ Direct2DRenderer::~Direct2DRenderer()
 {
 	CloseHandle(hThreadCacheFileNamePrevious);
 	CloseHandle(hThreadCacheFileNameNext);
-	SafeRelease(&m_pDWriteFactory);
-	SafeRelease(&m_pRenderTarget);
-	SafeRelease(&m_pTextFormat);
-	SafeRelease(&m_pBlackBrush);
-	SafeRelease(&m_pWhiteBrush);
 
 	for (UINT i = 0U; i < m_ImagePrevious.Frames; i++)
 	{
@@ -170,6 +165,11 @@ Direct2DRenderer::~Direct2DRenderer()
 	/*delete [] m_ImageNext.Title;
 	m_ImageNext.Title = nullptr;*/
 
+	SafeRelease(&m_pDWriteFactory);
+	SafeRelease(&m_pRenderTarget);
+	SafeRelease(&m_pTextFormat);
+	SafeRelease(&m_pBlackBrush);
+	SafeRelease(&m_pWhiteBrush);
 	SafeRelease(&m_pD2DFactory);
 	//SafeRelease(&m_pContextDst); // Already destroyed by CoUninitialize() call that destroys m_pWICFactory that created this
 	//SafeRelease(&m_pWICFactory); // Already destroyed by CoUninitialize() call
@@ -331,7 +331,17 @@ HRESULT Direct2DRenderer::OnRender()
 
 			if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap) // stops crash in case of NULL pointer to bitmap
 			{
-				m_pRenderTarget->DrawBitmap(m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap, D2D1::RectF(0.0f, 0.0f, (96.0f/m_dpiX)*m_BitmapSizeFitToWindow.width, (96.0f/m_dpiX)*m_BitmapSizeFitToWindow.height));
+				m_pRenderTarget->DrawBitmap
+				(
+					m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap,
+					D2D1::RectF
+					(
+						0.0f,
+						0.0f,
+						(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.width,
+						(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.height
+					)
+				);
 			}
 			
 			/*ID2D1SolidColorBrush *m_pBlueBrush = nullptr;

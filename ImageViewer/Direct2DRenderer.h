@@ -1,6 +1,6 @@
 #pragma once
 
-#include <d2d1.h>
+#include <d2d1_1.h>
 #include <dwrite.h>
 #include <wincodec.h> // IWICImagingFactory
 #include <Wincodecsdk.h> // IWICMetadataBlockWriter
@@ -48,7 +48,7 @@ struct GIF_INFO
 
 struct FRAME_INFO
 {
-	ID2D1Bitmap *pBitmap;
+	ID2D1BitmapPtr pBitmap;
 	D2D1_SIZE_F Size;
 	LPWSTR Title;
 	USHORT RotationFlag;
@@ -127,7 +127,7 @@ public:
 	friend static unsigned WINAPI StaticCacheFileNameNext(LPVOID Param);
 
 	unsigned CacheFileNamePrevious(UINT);
-	unsigned CacheFileNameNext(UINT );
+	unsigned CacheFileNameNext(UINT);
 	
 private:
 	HRESULT CreateDeviceResources();
@@ -160,9 +160,9 @@ private:
 	HRESULT SetJPEGOrientation(LPCWSTR FileName);
 
 	HWND m_hWnd;
-    ID2D1Factory *m_pD2DFactory;
-    IWICImagingFactory *m_pWICFactory;
-    ID2D1HwndRenderTarget *m_pRenderTarget;
+    ID2D1FactoryPtr m_pD2DFactory;
+    IWICImagingFactoryPtr m_pWICFactory;
+    ID2D1HwndRenderTargetPtr m_pRenderTarget;
 	IMAGE_INFO m_ImagePrevious;
 	IMAGE_INFO m_ImageCurrent;
 	IMAGE_INFO m_ImageNext;
@@ -181,11 +181,11 @@ private:
 	D2D1_MATRIX_3X2_F m_TransformMatrixScale;
 	bool m_FitToWindow;
 	bool m_ScaleToWindow;
-	IDWriteFactory *m_pDWriteFactory;
-	IDWriteTextFormat *m_pTextFormat;
-	ID2D1SolidColorBrush *m_pBlackBrush;
-	ID2D1SolidColorBrush *m_pWhiteBrush;
-	IWICColorContext *m_pContextDst;
+	IDWriteFactoryPtr m_pDWriteFactory;
+	IDWriteTextFormatPtr m_pTextFormat;
+	ID2D1SolidColorBrushPtr m_pBlackBrush;
+	ID2D1SolidColorBrushPtr m_pWhiteBrush;
+	IWICColorContextPtr m_pContextDst;
 	HANDLE hThreadCacheFileNamePrevious;
 	HANDLE hThreadCacheFileNameNext;
 	bool BackgroundColorBlack;

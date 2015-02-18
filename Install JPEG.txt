@@ -1,0 +1,33 @@
+Download latest jpeg source code from http://www.ijg.org/
+Unzip into Code
+Copy paste Win32.MAK into the new directory
+
+Visual Studio Tools -> Command Prompt
+Change to directory
+\jpeg-9a>NMAKE /f makefile.vc  setup-v10
+
+Microsoft (R) Program Maintenance Utility Version 12.00.21005.1
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+        ren jconfig.vc jconfig.h
+        ren makejsln.v10 jpeg.sln
+        ren makeasln.v10 apps.sln
+        ren makejvcx.v10 jpeg.vcxproj
+        ren makejfil.v10 jpeg.vcxproj.filters
+        ren makecvcx.v10 cjpeg.vcxproj
+        ren makecfil.v10 cjpeg.vcxproj.filters
+        ren makedvcx.v10 djpeg.vcxproj
+        ren makedfil.v10 djpeg.vcxproj.filters
+        ren maketvcx.v10 jpegtran.vcxproj
+        ren maketfil.v10 jpegtran.vcxproj.filters
+        ren makervcx.v10 rdjpgcom.vcxproj
+        ren makerfil.v10 rdjpgcom.vcxproj.filters
+        ren makewvcx.v10 wrjpgcom.vcxproj
+        ren makewfil.v10 wrjpgcom.vcxproj.filters
+
+Convert to latest VS solution file
+Add 64 bit solution
+Build
+Copy .lib from /Release to C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\lib\jpeg32.lib
+Copy .lib from /x64/Release to C:\Program Files (x86)\Microsoft Visual Studio 12.0\VC\lib\amd64\jpeg64.lib
+Compile ImageViewer

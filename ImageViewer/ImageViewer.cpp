@@ -3,6 +3,7 @@
 #include "ImageViewer.h"
 #include "Direct2DRenderer.h"
 #include "HRESULT.h"
+#include <VersionHelpers.h> //IsWindows7OrGreater
 
 Direct2DRenderer renderer;
 
@@ -518,10 +519,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 	// A correct application can continue to run even if this call fails, 
     // so it is safe to ignore the return value
 	HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
-
-	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-	// ignore the return value as will just revert the 'Set as desktop background' to Vista options if this fails, and use the slower access for FindFirstFileExW
-	GetVersionExW(&osvi);
 
 	GetPhysicalProcessorCount(&g_NumberOfProcessors);
 
@@ -1053,7 +1050,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 	if (SUCCEEDED(hr))
 	{
 		DWORD dwAdditionalFlags = 0;
-		if ((osvi.dwMajorVersion > 6) || (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1)) // If greater than Windows 7 or Windows 7
+		if (IsWindows7OrGreater())
 		{
 			dwAdditionalFlags = FIND_FIRST_EX_LARGE_FETCH;
 		}
@@ -1216,7 +1213,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
     return result;
 }
 
-HRESULT CreateRightClickMenu(HMENU *hMenu, const OSVERSIONINFO osvi)
+HRESULT CreateRightClickMenu(HMENU *hMenu)
 {
 	HRESULT hr = S_OK;
 
@@ -1278,7 +1275,7 @@ HRESULT CreateRightClickMenu(HMENU *hMenu, const OSVERSIONINFO osvi)
 			if (hSetAsDesktopBackgroundMenu)
 			{
 				InsertMenuW(hSetAsDesktopBackgroundMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_SETASDESKTOPBACKGROUND_CENTER, L"Center");
-				if ((osvi.dwMajorVersion > 6) || (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1)) // If greater than Windows 7 or Windows 7
+				if (IsWindows7OrGreater())
 				{
 					InsertMenuW(hSetAsDesktopBackgroundMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_SETASDESKTOPBACKGROUND_CROPTOFIT, L"Crop to fit");
 					InsertMenuW(hSetAsDesktopBackgroundMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_SETASDESKTOPBACKGROUND_KEEPASPECT, L"Keep aspect");
@@ -2651,7 +2648,7 @@ void _OnCommand_RETURNEDFROMDELETEFILEWITHIFO(HWND /*hWnd*/, UINT codeNotify)
 
 void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 {
-	HRESULT hr = CreateRightClickMenu(&hRightClickMenu, osvi);
+	HRESULT hr = CreateRightClickMenu(&hRightClickMenu);
 	if (SUCCEEDED(hr))
 	{
 		SetForegroundWindow(hWnd);

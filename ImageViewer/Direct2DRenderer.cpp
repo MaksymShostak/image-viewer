@@ -135,47 +135,45 @@ Direct2DRenderer::Direct2DRenderer() :
 	ConformGIF(false)
 {}
 
-//
-// Release resources.
-//
-//Direct2DRenderer::~Direct2DRenderer()
-//{
-//	CloseHandle(hThreadCacheFileNamePrevious);
-//	CloseHandle(hThreadCacheFileNameNext);
-//	SafeRelease(&m_pDWriteFactory);
-//	SafeRelease(&m_pRenderTarget);
-//	SafeRelease(&m_pTextFormat);
-//	SafeRelease(&m_pBlackBrush);
-//	SafeRelease(&m_pWhiteBrush);
-//
-//	for (UINT i = 0U; i < m_ImagePrevious.Frames; i++)
-//	{
-//		SafeRelease(&m_ImagePrevious.aFrameInfo[i].pBitmap);
-//	}
-//
-//	for (UINT i = 0U; i < m_ImageCurrent.Frames; i++)
-//	{
-//		SafeRelease(&m_ImageCurrent.aFrameInfo[i].pBitmap);
-//	}
-//
-//	for (UINT i = 0U; i < m_ImageNext.Frames; i++)
-//	{
-//		SafeRelease(&m_ImageNext.aFrameInfo[i].pBitmap);
-//	}
-//
-//	/*delete [] m_ImagePrevious.Title;
-//	m_ImagePrevious.Title = nullptr;*/
-//
-//	/*delete [] m_ImageCurrent.Title;
-//	m_ImageCurrent.Title = nullptr;*/
-//
-//	/*delete [] m_ImageNext.Title;
-//	m_ImageNext.Title = nullptr;*/
-//
-//	SafeRelease(&m_pD2DFactory);
-//	//SafeRelease(&m_pContextDst); // Already destroyed by CoUninitialize() call that destroys m_pWICFactory that created this
-//	//SafeRelease(&m_pWICFactory); // Already destroyed by CoUninitialize() call
-//}
+//Release resources
+Direct2DRenderer::~Direct2DRenderer()
+{
+	CloseHandle(hThreadCacheFileNamePrevious);
+	CloseHandle(hThreadCacheFileNameNext);
+	SafeRelease(&m_pDWriteFactory);
+	SafeRelease(&m_pRenderTarget);
+	SafeRelease(&m_pTextFormat);
+	SafeRelease(&m_pBlackBrush);
+	SafeRelease(&m_pWhiteBrush);
+
+	for (UINT i = 0U; i < m_ImagePrevious.Frames; i++)
+	{
+		SafeRelease(&m_ImagePrevious.aFrameInfo[i].pBitmap);
+	}
+
+	for (UINT i = 0U; i < m_ImageCurrent.Frames; i++)
+	{
+		SafeRelease(&m_ImageCurrent.aFrameInfo[i].pBitmap);
+	}
+
+	for (UINT i = 0U; i < m_ImageNext.Frames; i++)
+	{
+		SafeRelease(&m_ImageNext.aFrameInfo[i].pBitmap);
+	}
+
+	/*delete [] m_ImagePrevious.Title;
+	m_ImagePrevious.Title = nullptr;*/
+
+	/*delete [] m_ImageCurrent.Title;
+	m_ImageCurrent.Title = nullptr;*/
+
+	/*delete [] m_ImageNext.Title;
+	m_ImageNext.Title = nullptr;*/
+
+	SafeRelease(&m_pD2DFactory);
+	//SafeRelease(&m_pContextDst); // Already destroyed by CoUninitialize() call that destroys m_pWICFactory that created this
+	//SafeRelease(&m_pWICFactory); // Already destroyed by CoUninitialize() call
+}
 
 //
 //  Called whenever the application needs to display the client

@@ -90,7 +90,7 @@ class Direct2DRenderer
 {
 public:
     Direct2DRenderer();
-    //~Direct2DRenderer();
+    ~Direct2DRenderer();
 	
 	HRESULT ActualSize();
 	HRESULT CreateDeviceIndependentResources();

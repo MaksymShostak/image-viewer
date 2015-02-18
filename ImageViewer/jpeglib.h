@@ -37,9 +37,9 @@ extern "C" {
  * Might be useful for tests like "#if JPEG_LIB_VERSION >= 80".
  */
 
-#define JPEG_LIB_VERSION        80	/* Compatibility version 8.0 */
-#define JPEG_LIB_VERSION_MAJOR  8
-#define JPEG_LIB_VERSION_MINOR  3
+#define JPEG_LIB_VERSION        90	/* Compatibility version 9.0 */
+#define JPEG_LIB_VERSION_MAJOR  9
+#define JPEG_LIB_VERSION_MINOR  1
 
 
 /* Various constants determining the sizes of things.

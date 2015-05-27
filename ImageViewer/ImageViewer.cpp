@@ -1038,6 +1038,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 	if (SUCCEEDED(hr))
 	{
 		// Copy the FileName string to a buffer
+		// TODO: Fix for long file paths and take network share paths into account https://msdn.microsoft.com/en-us/library/aa365247.aspx
 		hr = StringCchCopyW(szDir, MAX_PATH_UNICODE, FileNameVectorFromDirectory.Directory);
 	}
 

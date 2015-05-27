@@ -62,6 +62,11 @@
 #include <algorithm> // std::sort
 //#include <D3D9.h>
 #include <Propvarutil.h> // InitPropVariantFromInt16
+#include "jpeglib.h" // jpeg_stdio_src
+
+extern "C" {
+#include "transupp.h" // Support routines for jpegtran
+}
 
 #ifndef _DEBUG
 #define OutputDebugStringA(expr) ((void)0)
@@ -83,7 +88,7 @@ inline void SafeRelease(Interface **ppInterfaceToRelease)
 	if (*ppInterfaceToRelease)
 	{
 		(*ppInterfaceToRelease)->Release();
-		*ppInterfaceToRelease = NULL;
+		*ppInterfaceToRelease = nullptr;
 	}
 }
 

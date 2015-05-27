@@ -5,7 +5,6 @@
 #include <wincodec.h> // IWICImagingFactory
 #include <Wincodecsdk.h> // IWICMetadataBlockWriter
 #include <Icm.h> // GetStandardColorSpaceProfileW
-#include "jpegtran.h"
 //#include <comip.h>
 #include <comdef.h>
 //#include <comdefsp.h>

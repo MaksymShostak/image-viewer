@@ -15,8 +15,6 @@
 /* Although this file really shouldn't have access to the library internals,
  * it's helpful to let it call jround_up() and jcopy_block_row().
  */
-#include "stdafx.h"
-
 #define JPEG_INTERNALS
 
 #include "jinclude.h"

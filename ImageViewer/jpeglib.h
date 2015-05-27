@@ -855,7 +855,7 @@ struct jpeg_memory_mgr {
    * used for virtual-array buffers.)  May be changed by outer application
    * after creating the JPEG object.
    */
-  long max_memory_to_use;
+  size_t max_memory_to_use;
 
   /* Maximum allocation request accepted by alloc_large. */
   long max_alloc_chunk;
@@ -977,7 +977,7 @@ EXTERN(void) jpeg_stdio_src JPP((j_decompress_ptr cinfo, FILE * infile));
 /* Data source and destination managers: memory buffers. */
 EXTERN(void) jpeg_mem_dest JPP((j_compress_ptr cinfo,
 			       unsigned char ** outbuffer,
-			       unsigned long * outsize));
+			       size_t * outsize));
 EXTERN(void) jpeg_mem_src JPP((j_decompress_ptr cinfo,
 			      unsigned char * inbuffer,
 			      unsigned long insize));

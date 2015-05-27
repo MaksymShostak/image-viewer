@@ -242,7 +242,7 @@ JMESSAGE(JWRN_TOO_MUCH_DATA, "Application transferred too many scanlines")
    (*(cinfo)->err->error_exit) ((j_common_ptr) (cinfo)))
 #define ERREXITS(cinfo,code,str)  \
   ((cinfo)->err->msg_code = (code), \
-   strncpy((cinfo)->err->msg_parm.s, (str), JMSG_STR_PARM_MAX), \
+   strncpy_s((cinfo)->err->msg_parm.s, JMSG_STR_PARM_MAX, (str), JMSG_STR_PARM_MAX), \
    (*(cinfo)->err->error_exit) ((j_common_ptr) (cinfo)))
 
 #define MAKESTMT(stuff)		do { stuff } while (0)

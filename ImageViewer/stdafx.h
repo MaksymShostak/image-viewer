@@ -63,6 +63,8 @@
 //#include <D3D9.h>
 #include <Propvarutil.h> // InitPropVariantFromInt16
 #include "jpeglib.h" // jpeg_stdio_src
+#include <wrl\client.h> // Microsoft::WRL::ComPtr
+#include <memory> // std::unique_ptr
 
 extern "C" {
 #include "transupp.h" // Support routines for jpegtran

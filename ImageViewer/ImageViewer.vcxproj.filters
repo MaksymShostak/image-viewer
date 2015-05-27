@@ -60,9 +60,6 @@
     <ClInclude Include="jpegint.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SmartPointerTypeDefs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="jversion.h">
       <Filter>Header Files</Filter>
     </ClInclude>

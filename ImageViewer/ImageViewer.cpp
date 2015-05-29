@@ -11,14 +11,14 @@ unsigned __stdcall DeleteFileWithIFO(void* _ArgList)
 {
 	unsigned result = 0U;
 
-	DELETEFILEWITHIFO *deletefilewithifo = (DELETEFILEWITHIFO*)_ArgList;
+	DELETEFILEWITHIFO *deletefilewithifo = reinterpret_cast<DELETEFILEWITHIFO*>(_ArgList);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
 
 	if (SUCCEEDED(hr))
     {
         // Create COM instance of IFileOperation
-        IFileOperation *pfo = nullptr;
+        Microsoft::WRL::ComPtr<IFileOperation> pfo;
 
         hr = CoCreateInstance(CLSID_FileOperation, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
 
@@ -52,10 +52,10 @@ unsigned __stdcall DeleteFileWithIFO(void* _ArgList)
 				if (SUCCEEDED(hr))
 				{
 					// Create IShellItem instance associated to file to delete
-					IShellItem *psiFileToDelete = nullptr;
+					Microsoft::WRL::ComPtr<IShellItem> psiFileToDelete;
 
 					hr = SHCreateItemFromParsingName(
-							deletefilewithifo->FileName,
+							deletefilewithifo->FileName->c_str(),
 							NULL,
 							IID_PPV_ARGS(&psiFileToDelete)
 							);
@@ -63,11 +63,8 @@ unsigned __stdcall DeleteFileWithIFO(void* _ArgList)
 					if (SUCCEEDED(hr))
 					{
 							// Declare this shell item (file) to be deleted
-							hr = pfo->DeleteItem(psiFileToDelete, NULL);
+							hr = pfo->DeleteItem(psiFileToDelete.Get(), NULL);
 					}
- 
-					// Cleanup file-to-delete shell item
-					SafeRelease(&psiFileToDelete);
 				}
  
 				if (SUCCEEDED(hr))
@@ -80,6 +77,7 @@ unsigned __stdcall DeleteFileWithIFO(void* _ArgList)
 						BOOL bAnyOperationsAborted = false;
 
 						hr = pfo->GetAnyOperationsAborted(&bAnyOperationsAborted);
+
 						if (SUCCEEDED(hr))
 						{
 							if (bAnyOperationsAborted)
@@ -91,9 +89,6 @@ unsigned __stdcall DeleteFileWithIFO(void* _ArgList)
 				}
 			}
         }
-
-        // Cleanup file operation object
-		SafeRelease(&pfo);
     }
 
     // Cleanup COM
@@ -122,18 +117,18 @@ unsigned __stdcall DeleteFileWithIFO(void* _ArgList)
     return result;
 };
 
-unsigned __stdcall RenameFileWithIFO(void* _ArgList)
+unsigned int __stdcall RenameFileWithIFO(void* _ArgList)
 {
-	unsigned result = 0U;
+	unsigned int result = 0U;
 
-	RENAMEFILEWITHIFO *renamefilewithifo = (RENAMEFILEWITHIFO*)_ArgList;
+	RENAMEFILEWITHIFO *renamefilewithifo = reinterpret_cast<RENAMEFILEWITHIFO*>(_ArgList);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
 
 	if (SUCCEEDED(hr))
     {
         // Create COM instance of IFileOperation
-        IFileOperation *pfo = nullptr;
+		Microsoft::WRL::ComPtr<IFileOperation> pfo = nullptr;
 
         hr = CoCreateInstance(CLSID_FileOperation, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pfo));
 
@@ -165,10 +160,10 @@ unsigned __stdcall RenameFileWithIFO(void* _ArgList)
 				if (SUCCEEDED(hr))
 				{
 					// Create IShellItem instance associated to file to rename
-					IShellItem *psiFileToRename = nullptr;
+					Microsoft::WRL::ComPtr<IShellItem> psiFileToRename;
 
 					hr = SHCreateItemFromParsingName(
-							renamefilewithifo->FileName,
+							renamefilewithifo->FileName->c_str(),
 							NULL,
 							IID_PPV_ARGS(&psiFileToRename)
 							);
@@ -176,11 +171,8 @@ unsigned __stdcall RenameFileWithIFO(void* _ArgList)
 					if (SUCCEEDED(hr))
 					{
 						// Declare this shell item (file) to be renamed
-						hr = pfo->RenameItem(psiFileToRename, PathFindFileNameW(renamefilewithifo->FileNameNew), NULL);
+						hr = pfo->RenameItem(psiFileToRename.Get(), PathFindFileNameW(renamefilewithifo->FileNameNew->c_str()), NULL);
 					}
- 
-					// Cleanup file-to-rename shell item
-					SafeRelease(&psiFileToRename);
 				}
  
 				if (SUCCEEDED(hr))
@@ -204,9 +196,6 @@ unsigned __stdcall RenameFileWithIFO(void* _ArgList)
 				}
 			}
         }
-
-        // Cleanup file operation object
-		SafeRelease(&pfo);
     }
 
     // Cleanup COM
@@ -226,46 +215,48 @@ unsigned __stdcall RenameFileWithIFO(void* _ArgList)
     return result;
 };
 
-HRESULT RenameFileWithIFO(__in LPCWSTR FileName, __in LPCWSTR FileNameNew)
+HRESULT RenameFileWithIFO(__in std::wstring * FileName, __in std::wstring * FileNameNew)
 {
-	HRESULT hr = E_FAIL;
-
     // Check input parameter
-    if (FileName == nullptr || FileNameNew == nullptr)
+    if (!FileName || !FileNameNew)
 	{
 		return E_POINTER;
 	}
 	
-	RENAMEFILEWITHIFO renamefilewithifo = {FileName, FileNameNew};
+	RENAMEFILEWITHIFO renamefilewithifo;
+	renamefilewithifo.FileName = FileName;
+	renamefilewithifo.FileNameNew = FileNameNew;
 
-	HANDLE hThreadRenameFileWithIFO = (HANDLE)_beginthreadex( // NATIVE CODE
+	HANDLE hThreadRenameFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 			NULL, // void *security,
 			sizeof(RENAMEFILEWITHIFO), // unsigned stack_size,
 			&RenameFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
 			&renamefilewithifo, // void *arglist,
 			0U, // unsigned initflag,
 			NULL // unsigned *thrdaddr
-			);
+			));
 
 	if (!hThreadRenameFileWithIFO)
 	{
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 	
-	if (WaitForSingleObject(hThreadRenameFileWithIFO, INFINITE) == WAIT_FAILED)
+	if (WAIT_FAILED == WaitForSingleObject(hThreadRenameFileWithIFO, INFINITE))
 	{
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
+
+	HRESULT hr = E_FAIL;
 
 	DWORD dword = 0;
 
 	if (GetExitCodeThread(hThreadRenameFileWithIFO, &dword))
 	{
-		if (dword == 0)
+		if (0 == dword)
 		{
 			hr = S_OK;
 		}
-		else if (dword == 1)
+		else if (1 == dword)
 		{
 			hr = S_FALSE;
 		}
@@ -288,26 +279,28 @@ HRESULT RenameFileWithIFO(__in LPCWSTR FileName, __in LPCWSTR FileNameNew)
 }
 
 // Returns S_OK if deleted, S_FALSE if operation aborted
-HRESULT DeleteFileWithIFO(__in HWND hWnd, __in LPCWSTR FileName, __in bool Permanent, __in bool Silent) // IFileOperation::DeleteItem works only with Unicode UTF-16 strings.
+HRESULT DeleteFileWithIFO(__in HWND hWnd, __in std::wstring * FileName, __in bool Permanent, __in bool Silent) // IFileOperation::DeleteItem works only with Unicode UTF-16 strings.
 {
-	HRESULT hr = E_FAIL;
-
     // Check input parameter
-    if (FileName == nullptr)
+    if (!FileName)
 	{
 		return E_POINTER;
 	}
 	
-	DELETEFILEWITHIFO deletefilewithifo = {hWnd, FileName, Permanent, Silent};
+	DELETEFILEWITHIFO deletefilewithifo;
+	deletefilewithifo.hWnd = hWnd;
+	deletefilewithifo.FileName = FileName;
+	deletefilewithifo.Permanent = Permanent;
+	deletefilewithifo.Silent = Silent;
 
-	HANDLE hThreadDeleteFileWithIFO = (HANDLE)_beginthreadex( // NATIVE CODE
+	HANDLE hThreadDeleteFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 			NULL, // void *security,
 			sizeof(DELETEFILEWITHIFO), // unsigned stack_size,
 			&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
 			&deletefilewithifo, // void *arglist,
 			0U, // unsigned initflag,
 			NULL // unsigned *thrdaddr
-			);
+			));
 
 	if (!hThreadDeleteFileWithIFO)
 	{
@@ -319,15 +312,17 @@ HRESULT DeleteFileWithIFO(__in HWND hWnd, __in LPCWSTR FileName, __in bool Perma
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 
+	HRESULT hr = E_FAIL;
+
 	DWORD dword = 0;
 
 	if (GetExitCodeThread(hThreadDeleteFileWithIFO, &dword))
 	{
-		if (dword == 0)
+		if (0 == dword)
 		{
 			hr = S_OK;
 		}
-		else if (dword == 1)
+		else if (1 == dword)
 		{
 			hr = S_FALSE;
 		}
@@ -349,17 +344,15 @@ HRESULT DeleteFileWithIFO(__in HWND hWnd, __in LPCWSTR FileName, __in bool Perma
     return hr;
 }
 
-unsigned __stdcall CommonItemDialogOpen(void* _ArgList)
+unsigned int __stdcall CommonItemDialogOpen(void* _ArgList)
 {
-	unsigned result = 0U;
-
-	COMMONITEMDIALOGOPEN *commonitemdialogopen = (COMMONITEMDIALOGOPEN*)_ArgList;
+	COMMONITEMDIALOGOPEN *commonitemdialogopen = reinterpret_cast<COMMONITEMDIALOGOPEN*>(_ArgList);
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
 
 	if (SUCCEEDED(hr))
     {
-		IFileDialog *pfd = nullptr;
+		Microsoft::WRL::ComPtr<IFileDialog> pfd;
 		// CoCreate the dialog object.
 		hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_PPV_ARGS(&pfd));
 
@@ -367,7 +360,7 @@ unsigned __stdcall CommonItemDialogOpen(void* _ArgList)
 		{
 			if (SUCCEEDED(hr))
 			{
-				hr = pfd->SetTitle(commonitemdialogopen->pszTitle);
+				hr = pfd->SetTitle(commonitemdialogopen->pszTitle->c_str());
 			}
 		}
 
@@ -379,30 +372,29 @@ unsigned __stdcall CommonItemDialogOpen(void* _ArgList)
 			{
 				// Show the dialog
 				hr = pfd->Show(commonitemdialogopen->hWnd);
-				
+
 				if (SUCCEEDED(hr))
 				{
-					IShellItem *psiResult = nullptr;
+					Microsoft::WRL::ComPtr<IShellItem> psiResult = nullptr;
 					// Obtain the result of the user's interaction with the dialog.
 					hr = pfd->GetResult(&psiResult);
-					
+
 					if (SUCCEEDED(hr))
 					{
-						LPWSTR pszFileSysPath = L"\0";
+						LPWSTR pszFileSysPath = nullptr;
 
 						hr = psiResult->GetDisplayName(SIGDN_FILESYSPATH, &pszFileSysPath);
+
 						if (SUCCEEDED(hr))
 						{
-							hr = StringCchCopyW(commonitemdialogopen->FileName, MAX_PATH_UNICODE, pszFileSysPath);
+							commonitemdialogopen->FileName->assign(pszFileSysPath);
 							//SHAddToRecentDocs(SHARD_PATHW, pszFileSysPath);
 							//SHAddToRecentDocs(SHARD_SHELLITEM, psiResult);
 							CoTaskMemFree(pszFileSysPath);
 						}
-						SafeRelease(&psiResult);
 					}
 				}
 			}
-			SafeRelease(&pfd);
 		}
 	}
 
@@ -420,12 +412,15 @@ unsigned __stdcall CommonItemDialogOpen(void* _ArgList)
 		}
 		else
 		{
-			if (hr != HRESULT_FROM_WIN32(ERROR_CANCELLED)) // if user closed Open dialog without selection, treat as normal exit
+			// if user closed Open dialog without selection, treat as normal exit
+			if (HRESULT_FROM_WIN32(ERROR_CANCELLED) != hr) 
 			{
 				ErrorDescription(hr);
 			}
 		}
 	}
+
+	unsigned int result = 0U;
 
 	if (SUCCEEDED(hr))
 	{
@@ -440,20 +435,33 @@ unsigned __stdcall CommonItemDialogOpen(void* _ArgList)
     return result;
 };
 
-HRESULT CommonItemDialogOpen(__in LPCWSTR pszTitle, __in COMDLG_FILTERSPEC *rgFilterSpec, __in UINT cFileTypes, __out LPWSTR FileName)
+HRESULT CommonItemDialogOpen(__in std::wstring * pszTitle, __in COMDLG_FILTERSPEC *rgFilterSpec, __in UINT cFileTypes, __out std::wstring * FileName)
 {
-	HRESULT hr = E_FAIL;
-	
-	COMMONITEMDIALOGOPEN commonitemdialogopen = {NULL, pszTitle, rgFilterSpec, cFileTypes, FileName}; // NULL hWnd as this wrapper blocks the hWnd thread - if want it to be associated with certain hWnd need to use the thread function directly
+	if (!FileName)
+	{
+		return E_POINTER;
+	}
 
-	HANDLE hThreadCommonItemDialogOpen = (HANDLE)_beginthreadex( // NATIVE CODE
+	// NULL hWnd as this wrapper blocks the hWnd thread - if want it to be associated with certain hWnd need to use the thread function directly
+	COMMONITEMDIALOGOPEN commonitemdialogopen;
+
+	commonitemdialogopen.hWnd = nullptr;
+	if (pszTitle)
+	{
+		commonitemdialogopen.pszTitle = pszTitle;
+	}
+	commonitemdialogopen.rgFilterSpec = rgFilterSpec;
+	commonitemdialogopen.cFileTypes = cFileTypes;
+	commonitemdialogopen.FileName = FileName;
+
+	HANDLE hThreadCommonItemDialogOpen = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 			NULL, // void *security,
 			sizeof(COMMONITEMDIALOGOPEN), // unsigned stack_size,
 			&CommonItemDialogOpen, // unsigned ( __stdcall *start_address )( void * ),
 			&commonitemdialogopen, // void *arglist,
 			0U, // unsigned initflag,
 			NULL // unsigned *thrdaddr
-			);
+			));
 
 	if (!hThreadCommonItemDialogOpen)
 	{
@@ -465,11 +473,13 @@ HRESULT CommonItemDialogOpen(__in LPCWSTR pszTitle, __in COMDLG_FILTERSPEC *rgFi
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 
+	HRESULT hr = E_FAIL;
+
 	DWORD dword = 0;
 
 	if (GetExitCodeThread(hThreadCommonItemDialogOpen, &dword))
 	{
-		if (dword == 0)
+		if (0 == dword)
 		{
 			hr = S_OK;
 		}
@@ -491,20 +501,28 @@ HRESULT CommonItemDialogOpen(__in LPCWSTR pszTitle, __in COMDLG_FILTERSPEC *rgFi
     return hr;
 }
 
-HRESULT DirectoryFromFileName(__out LPWSTR FileDirectory, __in LPCWSTR FileName)
+HRESULT DirectoryFromFileName(__out std::wstring * pFileDirectory, __in const wchar_t * filePath)
 {
 	// Check input parameters
-    if (FileName == nullptr || FileDirectory == nullptr)
+    if (!filePath || !pFileDirectory)
 	{
 		return E_POINTER;
 	}
 
-	// Copy the FileName string to a buffer
-	HRESULT hr = StringCchCopyW(FileDirectory, MAX_PATH_UNICODE, FileName);
+	WCHAR pWSTR[MAX_PATH_UNICODE];
+
+	// Copy the filePath string to a buffer
+	HRESULT hr = StringCchCopyW(pWSTR, MAX_PATH_UNICODE, filePath);
+
 	if (SUCCEEDED(hr))
 	{
 		// Remove the file name and extension
-		hr = PathRemoveFileSpecW(FileDirectory) ? S_OK : E_FAIL;
+		hr = PathCchRemoveFileSpec(pWSTR, MAX_PATH_UNICODE);
+
+		if (SUCCEEDED(hr))
+		{
+			pFileDirectory->assign(pWSTR);
+		}
 	}
 
 	return hr;
@@ -512,15 +530,14 @@ HRESULT DirectoryFromFileName(__out LPWSTR FileDirectory, __in LPCWSTR FileName)
 
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /*lpCmdLine*/, int nCmdShow)
 {
-	MSG msg = {0};
+	MSG msg = { 0 };
 	HACCEL hAccelTable = nullptr;
-	HRESULT hr = S_OK;
 
 	// A correct application can continue to run even if this call fails, 
     // so it is safe to ignore the return value
 	HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
 
-	GetPhysicalProcessorCount(&g_NumberOfProcessors);
+	//GetPhysicalProcessorCount(&g_NumberOfProcessors);
 
 	/*WCHAR buffer[260];
 	hr = StringCchPrintfW(buffer, 260, L"%d", NumberOfProcessors);
@@ -530,7 +547,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 	}*/
 
 	// Initialise multithreaded COM for Direct2D
-	hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
+	HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
     if (FAILED(hr))
     {
 		ErrorDescription(hr);
@@ -560,7 +577,11 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
         return EXIT_FAILURE;
     }
 
-	NumberOfFileExtensions = CountOccurencesOfCharacterInString('.', FilterSpec[0].pszSpec);
+	std::wstring fullListOfExtensions(FilterSpec[0].pszSpec);
+
+	NumberOfFileExtensions = static_cast<UINT>(CountOccurencesOfCharacterInString(L'.', &fullListOfExtensions));
+
+	fullListOfExtensions.clear();
 
 	ArrayOfFileExtensions = new LPWSTR[NumberOfFileExtensions];
 
@@ -613,7 +634,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 	{
 		bool FileExtensionInList = false;
 
-		LPWSTR suffix = wcsrchr(lpszArgv[i], '.'); // Returns a pointer to the last occurrence of Ch in string, or NULL if Ch is not found.
+		LPWSTR suffix = wcsrchr(lpszArgv[i], L'.'); // Returns a pointer to the last occurrence of Ch in string, or NULL if Ch is not found.
 
 		if (suffix)
 		{
@@ -621,7 +642,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 
 			for (UINT j = 0U; j < NumberOfFileExtensions; j++)
 			{
-				if (_wcsicmp(suffix, ArrayOfFileExtensions[j]) == 0)
+				if (0 == _wcsicmp(suffix, ArrayOfFileExtensions[j]))
 				{
 					FileExtensionInList = true;
 					break;
@@ -631,12 +652,12 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 		
 		if (FileExtensionInList)
 		{
-			if (wcscmp(g_FileName, L"\0") == 0)
+			if (0 == wcscmp(g_FileName.c_str(), L"\0"))
 			{
-				hr = StringCchCopyW(g_FileName, MAX_PATH_UNICODE, lpszArgv[i]);
-				if (FAILED(hr))
+				g_FileName = lpszArgv[i];
+
+				if (g_FileName.empty())
 				{
-					ErrorDescription(hr);
 					return EXIT_FAILURE;
 				}
 				break;
@@ -737,14 +758,18 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 		return EXIT_FAILURE;
 	}
 
-	hCursorArrow = (HCURSOR)LoadImageW(
+	hCursorArrow = static_cast<HCURSOR>(LoadImageW(
 		NULL, // __in_opt HINSTANCE hinst
+#pragma warning(push)
+#pragma warning(disable:4302)
 		MAKEINTRESOURCEW(IDC_ARROW), // __in LPCTSTR lpszName
+#pragma warning(pop)
 		IMAGE_CURSOR, // __in UINT uType
 		0, // __in int cxDesired
 		0, // __in int cyDesired
 		LR_DEFAULTSIZE | LR_SHARED // __in UINT fuLoad
-		);
+		));
+
 	if (!hCursorArrow)
 	{
 		ErrorDescription(HRESULT_FROM_WIN32(GetLastError()));
@@ -765,28 +790,30 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 	//	return EXIT_FAILURE;
 	//}
 
-	hCursorHand = (HCURSOR)LoadImageW(
+	hCursorHand = static_cast<HCURSOR>(LoadImageW(
 		hInstance, // __in_opt HINSTANCE hinst
 		MAKEINTRESOURCEW(IDC_HANDOPEN), // __in LPCTSTR lpszName
 		IMAGE_CURSOR, // __in UINT uType
 		0, // __in int cxDesired
 		0, // __in int cyDesired
 		LR_DEFAULTSIZE | LR_SHARED // __in UINT fuLoad
-	   );
+	   ));
+
 	if (!hCursorHand)
 	{
 		ErrorDescription(HRESULT_FROM_WIN32(GetLastError()));
 		return EXIT_FAILURE;
 	}
 
-	hCursorHandClosed = (HCURSOR)LoadImageW(
+	hCursorHandClosed = static_cast<HCURSOR>(LoadImageW(
 		hInstance, // __in_opt HINSTANCE hinst
 		MAKEINTRESOURCEW(IDC_HANDCLOSED), // __in LPCTSTR lpszName
 		IMAGE_CURSOR, // __in UINT uType
 		0, // __in int cxDesired
 		0, // __in int cyDesired
 		LR_DEFAULTSIZE | LR_SHARED // __in UINT fuLoad
-	   );
+	   ));
+
 	if (!hCursorHandClosed)
 	{
 		ErrorDescription(HRESULT_FROM_WIN32(GetLastError()));
@@ -803,6 +830,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 	}
 
 	hAccelTable = LoadAcceleratorsW(hInstance, MAKEINTRESOURCE(IDC_IMAGEVIEWER));
+
 	if (!hAccelTable)
 	{
 		ErrorDescription(HRESULT_FROM_WIN32(GetLastError()));
@@ -819,35 +847,38 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 		}
 	}
 
+	// Ignore return value
 	CloseHandle(hThreadCreateFileNameVectorFromDirectory);
 
-	delete [] FilterSpec; // do not delete the strings in each element as this is taken care of by the destructor of Direct2DRenderer (where the strings are owned)
+	// do not delete the strings in each element as this is taken care of by the destructor of Direct2DRenderer (where the strings are owned)
+	//delete [] FilterSpec;
 
-	for (UINT i = 0U; i < NumberOfFileExtensions; i++)
+	/*for (UINT i = 0U; i < NumberOfFileExtensions; i++)
 	{
 		delete [] ArrayOfFileExtensions[i];
 	}
-	delete [] ArrayOfFileExtensions;
+	delete [] ArrayOfFileExtensions;*/
 
-	for (UINT i = 0U; i < g_Files.size(); i++)
+	/*for (UINT i = 0U; i < g_Files.size(); i++)
 	{
-		delete [] g_Files[i].FullPath;
 		DeleteObject(g_Files[i].Thumbnail);
-	}
+	}*/
 
-	for (UINT i = 0U; i < g_Directories.size(); i++)
+	if (hRightClickMenu)
 	{
-		delete [] g_Directories[i];
+		// Ignore return value
+		DestroyMenu(hRightClickMenu);
 	}
 
-	DestroyAcceleratorTable(hAccelTable);
-
-	DestroyMenu(hRightClickMenu);
-	DestroyMenu(hRightClickMenuTitleBar);
+	if (hRightClickMenuTitleBar)
+	{
+		// Ignore return value
+		DestroyMenu(hRightClickMenuTitleBar);
+	}
 
 	CoUninitialize(); // Uninitialise COM for Direct2D
 
-	return (int) msg.wParam;
+	return static_cast<int>(msg.wParam);
 }
 
 //
@@ -971,7 +1002,7 @@ bool FilesSortBySize(FILESTRUCT &lhs, FILESTRUCT &rhs)
 
 bool FilesSortByNameNatural(FILESTRUCT &lhs, FILESTRUCT &rhs)
 {
-	return (StrCmpLogicalW(lhs.FullPath, rhs.FullPath) < 0);
+	return (StrCmpLogicalW(lhs.FullPath.c_str(), rhs.FullPath.c_str()) < 0);
 }
 
 bool NaturalSort(LPCWSTR &lhs, LPCWSTR &rhs)
@@ -986,15 +1017,15 @@ bool NaturalSort(LPCWSTR &lhs, LPCWSTR &rhs)
 
 struct FILENAMEVECTORFROMDIRECTORY
 {
-	std::vector <FILESTRUCT> *Files;
-	LPCWSTR Directory;
+	std::vector<FILESTRUCT> * Files;
+	std::wstring * Directory;
 	LPWSTR *ArrayOfFileExtensions;
 	UINT NumberOfFileExtensions;
 };
 
-bool PathEndsInSlash(LPCWSTR Path)
+bool PathEndsInSlash(std::wstring * pPath)
 {
-	if (Path[wcslen(Path) - 1] == L'\\')
+	if (L'\\' == pPath->back())
 	{
 		return true;
 	}
@@ -1039,7 +1070,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 	{
 		// Copy the FileName string to a buffer
 		// TODO: Fix for long file paths and take network share paths into account https://msdn.microsoft.com/en-us/library/aa365247.aspx
-		hr = StringCchCopyW(szDir, MAX_PATH_UNICODE, FileNameVectorFromDirectory.Directory);
+		hr = StringCchCopyW(szDir, MAX_PATH_UNICODE, FileNameVectorFromDirectory.Directory->c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -1090,7 +1121,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 					{
 						if (_wcsicmp(suffix, FileNameVectorFromDirectory.ArrayOfFileExtensions[i]) == 0)
 						{
-							hr = StringCchCopyW(wFullFileName, MAX_PATH_UNICODE, FileDirectory);
+							hr = StringCchCopyW(wFullFileName, MAX_PATH_UNICODE, FileDirectory.c_str());
 							if (SUCCEEDED(hr))
 							{
 								if (!DirectoryIsRoot)
@@ -1104,7 +1135,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 									if (SUCCEEDED(hr))
 									{
 										//GetThumbnail(wFullFileName, &File.Thumbnail);
-										File.Thumbnail = nullptr;
+										//File.Thumbnail = nullptr;
 
 										FileTimeToLocalFileTime(&ffd.ftLastWriteTime, &FileTimeModfied);
 																				
@@ -1126,7 +1157,7 @@ unsigned __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 
 										FileNameVectorFromDirectory.Files->push_back(File);
 
-										if (g_FileNamePosition == 0U && (wcscmp(g_FileName, wFullFileName) == 0)) // will keep comparing if fileposition is legitimately 0
+										if (g_FileNamePosition == 0U && (wcscmp(g_FileName.c_str(), wFullFileName) == 0)) // will keep comparing if fileposition is legitimately 0
 										{
 											g_FileNamePosition = ID;
 										}
@@ -1307,7 +1338,7 @@ HRESULT CreateRightClickMenu(HMENU *hMenu)
 	return hr;
 }
 
-HRESULT CreateRightClickMenuTitleBar(HMENU *hMenu, LPCWSTR FileName, std::vector <LPWSTR> *Directories)
+HRESULT CreateRightClickMenuTitleBar(HMENU * hMenu, LPCWSTR FileName, std::vector<std::wstring> * Directories)
 {
 	HRESULT hr = S_OK;
 
@@ -1330,7 +1361,7 @@ HRESULT CreateRightClickMenuTitleBar(HMENU *hMenu, LPCWSTR FileName, std::vector
 		if (SUCCEEDED(hr))
 		{
 			WCHAR FileNameTemp[MAX_PATH_UNICODE] = {0};
-			SIZE size = {GetSystemMetrics(SM_CXMENUCHECK), GetSystemMetrics(SM_CYMENUCHECK)};
+			SIZE size = {GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON)};
 
 			hr = StringCchCopyW(FileNameTemp, MAX_PATH_UNICODE, FileName);
 
@@ -1339,7 +1370,7 @@ HRESULT CreateRightClickMenuTitleBar(HMENU *hMenu, LPCWSTR FileName, std::vector
 				LPWSTR FileDirectoryTemp = nullptr;
 				size_t LengthOfFileDirectoryTemp = wcslen(FileNameTemp) + 1;
 
-				FileDirectoryTemp = new (std::nothrow) WCHAR[LengthOfFileDirectoryTemp];
+				FileDirectoryTemp = new WCHAR[LengthOfFileDirectoryTemp];
 				wmemset(FileDirectoryTemp, 0, LengthOfFileDirectoryTemp);
 
 				hr = FileDirectoryTemp ? S_OK : E_OUTOFMEMORY;
@@ -1357,22 +1388,23 @@ HRESULT CreateRightClickMenuTitleBar(HMENU *hMenu, LPCWSTR FileName, std::vector
 					mii.cbSize = sizeof(MENUITEMINFO);
 					mii.fMask = MIIM_BITMAP | MIIM_FTYPE | MIIM_STRING;
 					mii.fType = MFT_STRING;
-					mii.dwTypeData = PathIsRoot(FileDirectoryTemp) ? FileDirectoryTemp : wcsrchr(FileDirectoryTemp, L'\\') + 1;
+					mii.dwTypeData = PathCchIsRoot(FileDirectoryTemp) ? FileDirectoryTemp : wcsrchr(FileDirectoryTemp, L'\\') + 1;
 					mii.cch = static_cast<UINT>(LengthOfFileDirectoryTemp);
 
 					HBITMAP hBitmap = nullptr;
-					IShellItemImageFactory *pShellItemImageFactory = nullptr;
+					Microsoft::WRL::ComPtr<IShellItemImageFactory> pShellItemImageFactory = nullptr;
 
 					if (SUCCEEDED(SHCreateItemFromParsingName(FileDirectoryTemp, NULL, IID_PPV_ARGS(&pShellItemImageFactory))))
 					{
-						pShellItemImageFactory->GetImage(size, SIIGBF_RESIZETOFIT, &hBitmap);
+						pShellItemImageFactory->GetImage(
+							size,
+							(IsWindows8OrGreater() ? SIIGBF_SCALEUP | SIIGBF_RESIZETOFIT : SIIGBF_RESIZETOFIT),
+							&hBitmap);
 					}
-
-					SafeRelease(&pShellItemImageFactory);
 
 					mii.hbmpItem = hBitmap;
 
-					if (Directories->size() == 1)
+					if (1 == Directories->size())
 					{
 						mii.fMask = mii.fMask | MIIM_STATE;
 						mii.fState = MFS_DEFAULT;
@@ -1393,17 +1425,16 @@ struct SETASDESKTOPBACKGROUND
 	DWORD dwStyle;
 };
 
-unsigned __stdcall SetAsDesktopBackground(void* _ArgList)
+unsigned int __stdcall SetAsDesktopBackground(void* _ArgList)
 {
-	unsigned result = 0;
-
-	SETASDESKTOPBACKGROUND setasdesktopbackground = *((SETASDESKTOPBACKGROUND*)_ArgList);
+	SETASDESKTOPBACKGROUND setasdesktopbackground = *(reinterpret_cast<SETASDESKTOPBACKGROUND*>(_ArgList));
 
 	HRESULT hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE | COINIT_SPEED_OVER_MEMORY);
 
 	if (SUCCEEDED(hr))
     {
-		IActiveDesktop *iADesktop = nullptr;
+		Microsoft::WRL::ComPtr<IActiveDesktop> iADesktop;
+
 		hr = CoCreateInstance(CLSID_ActiveDesktop, NULL, CLSCTX_ALL, IID_PPV_ARGS(&iADesktop));
 
 		if (SUCCEEDED(hr))
@@ -1427,12 +1458,13 @@ unsigned __stdcall SetAsDesktopBackground(void* _ArgList)
 				}
 			}
 		}
-		SafeRelease(&iADesktop);
 	}
 
     // Cleanup COM
     CoUninitialize(); // Must be called for each CoInitialize/CoInitializeEx
 	
+	unsigned int result = 0U;
+
 	if (SUCCEEDED(hr))
 	{
 		result = 0;
@@ -1446,36 +1478,36 @@ unsigned __stdcall SetAsDesktopBackground(void* _ArgList)
     return result;
 };
 
-HRESULT SetAsDesktopBackground(__in LPCWSTR FileName, __in DWORD dwStyle)
-{
-	HRESULT hr = E_FAIL;
-	
-	SETASDESKTOPBACKGROUND setasdesktopbackground = {FileName, dwStyle};
+HRESULT SetAsDesktopBackground(__in std::wstring * FileName, __in DWORD dwStyle)
+{	
+	SETASDESKTOPBACKGROUND setasdesktopbackground = {FileName->c_str(), dwStyle};
 
-	HANDLE hThreadSetAsDesktopBackground = (HANDLE)_beginthreadex( // NATIVE CODE
+	HANDLE hThreadSetAsDesktopBackground = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 			NULL, // void *security,
 			sizeof(SETASDESKTOPBACKGROUND), // unsigned stack_size,
 			&SetAsDesktopBackground, // unsigned ( __stdcall *start_address )( void * ),
 			&setasdesktopbackground, // void *arglist,
 			0U, // unsigned initflag,
 			NULL // unsigned *thrdaddr
-			);
+			));
 
 	if (!hThreadSetAsDesktopBackground)
 	{
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
 	
-	if (WaitForSingleObject(hThreadSetAsDesktopBackground, INFINITE) == WAIT_FAILED)
+	if (WAIT_FAILED == WaitForSingleObject(hThreadSetAsDesktopBackground, INFINITE))
 	{
 		return HRESULT_FROM_WIN32(GetLastError());
 	}
+
+	HRESULT hr = E_FAIL;
 
 	DWORD dword = 0;
 
 	if (GetExitCodeThread(hThreadSetAsDesktopBackground, &dword))
 	{
-		if (dword == 0)
+		if (0 == dword)
 		{
 			hr = S_OK;
 		}
@@ -1698,6 +1730,7 @@ void _OnCommand(HWND hWnd, int id, HWND /*hwndCtl*/, UINT codeNotify)
 void _OnCommand_ID_FILE_ACTUALSIZE(HWND /*hWnd*/)
 {
 	HRESULT hr = renderer.ActualSize();
+
 	if (SUCCEEDED(hr))
 	{
 		SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
@@ -1743,11 +1776,13 @@ void _OnCommand_ID_FILE_COPY(HWND hWnd)
 {
 	WCHAR buffer[MAX_PATH_UNICODE] = {0};
 
-	HRESULT hr = StringCchCopyW(buffer, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath);
+	HRESULT hr = StringCchCopyW(buffer, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
+
 	if SUCCEEDED(hr)
 	{
 		// Append null character to the buffer as HDROP string needs to be double null terminated
 		hr = StringCchCatW(buffer, MAX_PATH_UNICODE, L"\0");
+
 		if SUCCEEDED(hr)
 		{
  			if (OpenClipboard(hWnd))
@@ -1755,7 +1790,9 @@ void _OnCommand_ID_FILE_COPY(HWND hWnd)
 				if (EmptyClipboard())
 				{
 					int nSize = sizeof(DROPFILES) + sizeof(buffer);
+
 					HANDLE hData = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT, nSize);
+
 					if (hData != NULL)
 					{
 						LPDROPFILES pDropFiles = (LPDROPFILES)GlobalLock(hData);
@@ -1813,7 +1850,7 @@ void _OnCommand_ID_FILE_COPY(HWND hWnd)
     return ptr;
 }*/
 
-inline HRESULT BlockForResult(ISpRecoContext * pRecoCtxt, ISpRecoResult ** ppResult)
+/*inline HRESULT BlockForResult(ISpRecoContext * pRecoCtxt, ISpRecoResult ** ppResult)
 {
     HRESULT hr = S_OK;
 	CSpEvent event;
@@ -1832,7 +1869,7 @@ inline HRESULT BlockForResult(ISpRecoContext * pRecoCtxt, ISpRecoResult ** ppRes
     }
 
     return hr;
-}
+}*/
 
 void _OnCommand_ID_FILE_CUT(HWND /*hWnd*/)
 {
@@ -2112,18 +2149,18 @@ void _OnCommand_ID_FILE_DELETE(HWND hWnd)
 		g_BlockMovement = true;
 
 		g_deletefilewithifo.hWnd = hWnd;
-		g_deletefilewithifo.FileName = g_Files[g_FileNamePosition].FullPath;
+		g_deletefilewithifo.FileName = &g_Files[g_FileNamePosition].FullPath;
 		g_deletefilewithifo.Permanent = false;
 		g_deletefilewithifo.Silent = false;
 
-		HANDLE hThreadDeleteFileWithIFO = (HANDLE)_beginthreadex( // NATIVE CODE
+		HANDLE hThreadDeleteFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 				NULL, // void *security,
 				sizeof(DELETEFILEWITHIFO), // unsigned stack_size,
 				&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
 				&g_deletefilewithifo, // void *arglist,
 				0U, // unsigned initflag,
 				NULL // unsigned *thrdaddr
-				);
+				));
 
 		if (!hThreadDeleteFileWithIFO)
 		{
@@ -2139,18 +2176,18 @@ void _OnCommand_ID_FILE_DELETEPERMANENTLY(HWND hWnd)
 		g_BlockMovement = true;
 
 		g_deletefilewithifo.hWnd = hWnd;
-		g_deletefilewithifo.FileName = g_Files[g_FileNamePosition].FullPath;
+		g_deletefilewithifo.FileName = &g_Files[g_FileNamePosition].FullPath;
 		g_deletefilewithifo.Permanent = true;
 		g_deletefilewithifo.Silent = false;
 
-		HANDLE hThreadDeleteFileWithIFO = (HANDLE)_beginthreadex( // NATIVE CODE
+		HANDLE hThreadDeleteFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 				NULL, // void *security,
 				sizeof(DELETEFILEWITHIFO), // unsigned stack_size,
 				&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
 				&g_deletefilewithifo, // void *arglist,
 				0U, // unsigned initflag,
 				NULL // unsigned *thrdaddr
-				);
+				));
 
 		if (!hThreadDeleteFileWithIFO)
 		{
@@ -2173,7 +2210,9 @@ void _OnCommand_ID_FILE_FIRSTFILE(HWND hWnd)
 		if (g_FileNamePosition != FileNamePositionFirst)
 		{
 			g_FileNamePosition = FileNamePositionFirst;
-			HRESULT hr = renderer.LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath);
+
+			HRESULT hr = renderer.LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
+
 			if (SUCCEEDED(hr))
 			{
 				InvalidateRect(hWnd, NULL, FALSE);
@@ -2263,7 +2302,9 @@ void _OnCommand_ID_FILE_LASTFILE(HWND hWnd)
 		if (g_FileNamePosition != FileNamePositionLast)
 		{
 			g_FileNamePosition = FileNamePositionLast;
-			HRESULT hr = renderer.LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath);
+
+			HRESULT hr = renderer.LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
+
 			if (SUCCEEDED(hr))
 			{
 				InvalidateRect(hWnd, NULL, FALSE);
@@ -2294,12 +2335,15 @@ void _OnCommand_ID_FILE_NEW(HWND hWnd)
 					FileNamePositionTemp = 0U;
 				}
 
-				if (PathFileExistsW(g_Files[FileNamePositionTemp].FullPath)) // PathFileExistsW might not support MAX_PATH_UNICODE chars
+				// Use GetFileAttributes instead of PathFileExists to handle long file names
+				DWORD fileAttributes = GetFileAttributesW(g_Files[FileNamePositionTemp].FullPath.c_str());
+
+				if (INVALID_FILE_ATTRIBUTES != fileAttributes && !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 				{ // ShellExecuteW strictly needs STA model of COM http://support.microsoft.com/default.aspx?scid=287087
 					ShellExecuteW(
 						hWnd, // __in_opt  HWND hwnd
 						L"open", // __in_opt LPCTSTR lpOperation
-						g_Files[FileNamePositionTemp].FullPath, // __in LPCTSTR lpFile,
+						g_Files[FileNamePositionTemp].FullPath.c_str(), // __in LPCTSTR lpFile,
 						NULL, // __in_opt LPCTSTR lpParameters,
 						NULL, // __in_opt LPCTSTR lpDirectory,
 						SW_MAXIMIZE // __in INT nShowCmd
@@ -2341,16 +2385,16 @@ void _OnCommand_ID_FILE_OPEN(HWND hWnd)
 		g_commonitemdialogopen.pszTitle = nullptr;
 		g_commonitemdialogopen.rgFilterSpec = FilterSpec;
 		g_commonitemdialogopen.cFileTypes = cFileTypes;
-		g_commonitemdialogopen.FileName = g_FileName;
+		g_commonitemdialogopen.FileName = &g_FileName;
 
-		HANDLE hThreadCommonItemDialogOpen = (HANDLE)_beginthreadex( // NATIVE CODE
+		HANDLE hThreadCommonItemDialogOpen = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 				NULL, // void *security,
 				sizeof(COMMONITEMDIALOGOPEN), // unsigned stack_size,
 				&CommonItemDialogOpen, // unsigned ( __stdcall *start_address )( void * ),
 				&g_commonitemdialogopen, // void *arglist,
 				0U, // unsigned initflag,
 				NULL // unsigned *thrdaddr
-				);
+				));
 
 		if (!hThreadCommonItemDialogOpen)
 		{
@@ -2361,7 +2405,7 @@ void _OnCommand_ID_FILE_OPEN(HWND hWnd)
 
 void _OnCommand_ID_FILE_OPENFILELOCATION(HWND /*hWnd*/)
 {
-	ITEMIDLIST __unaligned *pidl = ILCreateFromPathW(g_Files[g_FileNamePosition].FullPath);
+	ITEMIDLIST __unaligned *pidl = ILCreateFromPathW(g_Files[g_FileNamePosition].FullPath.c_str());
 	if (pidl)
 	{// CoInitialize or CoInitializeEx must be called before using SHOpenFolderAndSelectItems. Not doing so causes SHOpenFolderAndSelectItems to fail.
 		HRESULT hr = SHOpenFolderAndSelectItems(pidl, 0U, NULL, NULL);
@@ -2398,7 +2442,7 @@ void _OnCommand_ID_FILE_PROPERTIES(HWND hWnd)
 	if (!SHObjectProperties(
 		hWnd, // __in  HWND hwnd
 		SHOP_FILEPATH, // __in  DWORD shopObjectType
-		g_Files[g_FileNamePosition].FullPath, // __in  PCWSTR pszObjectName
+		g_Files[g_FileNamePosition].FullPath.c_str(), // __in  PCWSTR pszObjectName
 		L"Details" // __in  PCWSTR pszPropertyPage
 		))
 	{
@@ -2411,7 +2455,8 @@ void _OnCommand_ID_FILE_ROTATECLOCKWISE(HWND /*hWnd*/)
 	if (renderer.RotateEnabled())
 	{
 		HRESULT hr = renderer.Rotate(true);
-		if (FAILED(hr) && hr != WINCODEC_ERR_ABORTED) // if rotation aborted by user, treat as normal exit
+
+		if (FAILED(hr) && WINCODEC_ERR_ABORTED != hr) // if rotation aborted by user, treat as normal exit
 		{
 			ErrorDescription(hr);
 		}
@@ -2423,7 +2468,8 @@ void _OnCommand_ID_FILE_ROTATECOUNTERCLOCKWISE(HWND /*hWnd*/)
 	if (renderer.RotateEnabled())
 	{
 		HRESULT hr = renderer.Rotate(false);
-		if (FAILED(hr) && hr != WINCODEC_ERR_ABORTED) // if rotation aborted by user, treat as normal exit
+
+		if (FAILED(hr) && WINCODEC_ERR_ABORTED != hr) // if rotation aborted by user, treat as normal exit
 		{
 			ErrorDescription(hr);
 		}
@@ -2433,6 +2479,7 @@ void _OnCommand_ID_FILE_ROTATECOUNTERCLOCKWISE(HWND /*hWnd*/)
 void _OnCommand_ID_FILE_SCALETOWINDOW(HWND /*hWnd*/)
 {
 	HRESULT hr = renderer.ScaleToWindow();
+
 	if (SUCCEEDED(hr))
 	{
 		SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
@@ -2442,7 +2489,8 @@ void _OnCommand_ID_FILE_SCALETOWINDOW(HWND /*hWnd*/)
 //WPSTYLE_CENTER; // Center the wallpaper image in its original size, filling the remaining area with a solid background color if image is smaller than screen or cropping image if image is larger.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CENTER(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(g_Files[g_FileNamePosition].FullPath, WPSTYLE_CENTER);
+	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_CENTER);
+
 	if (FAILED(hr))
 	{
 		ErrorDescription(hr);
@@ -2452,7 +2500,8 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CENTER(HWND /*hWnd*/)
 //WPSTYLE_CROPTOFIT; // Windows 7 and later only. Enlarge or shrink the image to fill the screen, retaining the aspect ratio of the original image. If necessary, the image is cropped either on the top and bottom or on the left and right as necessary to fit the screen.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CROPTOFIT(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(g_Files[g_FileNamePosition].FullPath, WPSTYLE_CROPTOFIT);
+	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_CROPTOFIT);
+
 	if (FAILED(hr))
 	{
 		ErrorDescription(hr);
@@ -2462,7 +2511,8 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CROPTOFIT(HWND /*hWnd*/)
 //WPSTYLE_KEEPASPECT; // Windows 7 and later only. Enlarge or shrink the image to fill the screen, retaining the aspect ratio of the original image. If necessary, the image is padded either on the top and bottom or on the right and left with the background color to fill any screen area not covered by the image.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_KEEPASPECT(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(g_Files[g_FileNamePosition].FullPath, WPSTYLE_KEEPASPECT);
+	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_KEEPASPECT);
+
 	if (FAILED(hr))
 	{
 		ErrorDescription(hr);
@@ -2472,7 +2522,8 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_KEEPASPECT(HWND /*hWnd*/)
 //WPSTYLE_STRETCH; // Stretch the image to cover the full screen. This can result in distortion of the image as the image's aspect ratio is not retained.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_STRETCH(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(g_Files[g_FileNamePosition].FullPath, WPSTYLE_STRETCH);
+	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_STRETCH);
+
 	if (FAILED(hr))
 	{
 		ErrorDescription(hr);
@@ -2482,7 +2533,8 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_STRETCH(HWND /*hWnd*/)
 //WPSTYLE_TILE; // Tile the wallpaper image, starting in the upper left corner of the screen. This uses the image in its original size.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_TILE(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(g_Files[g_FileNamePosition].FullPath, WPSTYLE_TILE);
+	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_TILE);
+
 	if (FAILED(hr))
 	{
 		ErrorDescription(hr);
@@ -2566,9 +2618,9 @@ void _OnCommand_ID_HELP_ABOUT(HWND hWnd)
 	config.hwndParent			= hWnd;
 	config.nDefaultButton		= IDCLOSE;
 	config.pfCallback			= TaskDialogCallbackProc;
-	config.pszContent			= L"Version 0.9\n"
+	config.pszContent			= L"Version 0.9.0.1\n"
 								  L"<A HREF=\"http:\\maksymshostak.com\">Maksym Shostak</A>\n"
-								  L"© 2011";
+								  L"© 2015";
 	config.pszMainIcon			= MAKEINTRESOURCEW(IDI_IMAGEVIEWER); // TD_INFORMATION_ICON;
 	config.pszMainInstruction	= L"Image Viewer";
 	config.pszWindowTitle		= L"About";
@@ -2582,41 +2634,37 @@ void _OnCommand_ID_HELP_ABOUT(HWND hWnd)
 
 void _OnCommand_RETURNEDFROMCOMMONITEMDIALOGOPEN(HWND hWnd)
 {
-	HRESULT hr = DirectoryFromFileName(FileDirectory, g_FileName);
+	HRESULT hr = DirectoryFromFileName(&FileDirectory, g_FileName.c_str());
+
 	if (SUCCEEDED(hr))
 	{
-		for (UINT i = 0U; i < g_Files.size(); i++)
-		{
-			delete [] g_Files[i].FullPath;
-			DeleteObject(g_Files[i].Thumbnail);
-		}
 		g_Files.clear();
+
 		g_FileNamePosition = 0U;
-		for (UINT i = 0U; i < g_Directories.size(); i++)
-		{
-			delete [] g_Directories[i];
-		}
+
 		g_Directories.clear();
+
 		DestroyMenu(hRightClickMenuTitleBar);
+
 		hRightClickMenuTitleBar = nullptr;
 
-		FILENAMEVECTORFROMDIRECTORY FileNameVectorFromDirectory = {&g_Files, FileDirectory, ArrayOfFileExtensions, NumberOfFileExtensions};
+		FILENAMEVECTORFROMDIRECTORY FileNameVectorFromDirectory = {&g_Files, &FileDirectory, ArrayOfFileExtensions, NumberOfFileExtensions};
 		
-		hThreadCreateFileNameVectorFromDirectory = (HANDLE)_beginthreadex( // NATIVE CODE
+		hThreadCreateFileNameVectorFromDirectory = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 			NULL, // void *security,
 			sizeof(FILENAMEVECTORFROMDIRECTORY), // unsigned stack_size,
 			&CreateFileNameVectorFromDirectory, // unsigned ( __stdcall *start_address )( void * ),
 			&FileNameVectorFromDirectory, // void *arglist,
 			0U, // unsigned initflag,
 			NULL // unsigned *thrdaddr
-			);
+			));
 
 		hr = hThreadCreateFileNameVectorFromDirectory ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.LoadBitmapCurrent(g_FileName);
+		hr = renderer.LoadBitmapCurrent(g_FileName.c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -2650,6 +2698,7 @@ void _OnCommand_RETURNEDFROMDELETEFILEWITHIFO(HWND /*hWnd*/, UINT codeNotify)
 void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 {
 	HRESULT hr = CreateRightClickMenu(&hRightClickMenu);
+
 	if (SUCCEEDED(hr))
 	{
 		SetForegroundWindow(hWnd);
@@ -2701,7 +2750,7 @@ void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 
 		if (!TrackPopupMenu(hRightClickMenu, (GetSystemMetrics(SM_MENUDROPALIGNMENT) == 0 ? TPM_LEFTALIGN : TPM_RIGHTALIGN) | TPM_TOPALIGN, xPos, yPos, 0, hWnd, NULL))
 		{
-			if (GetLastError() != ERROR_POPUP_ALREADY_ACTIVE)
+			if (ERROR_POPUP_ALREADY_ACTIVE != GetLastError())
 			{
 				ErrorDescription(HRESULT_FROM_WIN32(GetLastError()));
 			}
@@ -2713,10 +2762,11 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 {
 	HRESULT hr = S_OK;
 	// if FileName not initialised from command-line argument, get user to select file
-	if ((wcscmp(g_FileName, L"\0") == 0))
+	if ((0 == wcscmp(g_FileName.c_str(), L"\0")))
 	{
-		hr = CommonItemDialogOpen(NULL, FilterSpec, cFileTypes, g_FileName);
-		if (hr == HRESULT_FROM_WIN32(ERROR_CANCELLED)) // if user closed Open dialog without selection, treat as normal exit
+		hr = CommonItemDialogOpen(nullptr, FilterSpec, cFileTypes, &g_FileName);
+
+		if (HRESULT_FROM_WIN32(ERROR_CANCELLED) == hr) // if user closed Open dialog without selection, treat as normal exit
 		{
 			return FALSE;
 		}
@@ -2727,25 +2777,25 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 		hr = renderer.SetHwnd(hWnd);
 	}
 
-	if (g_Files.size() == 0) // if FileNames uninitialised
+	if (0 == g_Files.size()) // if FileNames uninitialised
 	{
 		if (SUCCEEDED(hr))
 		{
-			hr = DirectoryFromFileName(FileDirectory, g_FileName);
+			hr = DirectoryFromFileName(&FileDirectory, g_FileName.c_str());
 		}
 
 		if (SUCCEEDED(hr))
 		{
-			FILENAMEVECTORFROMDIRECTORY FileNameVectorFromDirectory = {&g_Files, FileDirectory, ArrayOfFileExtensions, NumberOfFileExtensions};
+			FILENAMEVECTORFROMDIRECTORY FileNameVectorFromDirectory = {&g_Files, &FileDirectory, ArrayOfFileExtensions, NumberOfFileExtensions};
 		
-			hThreadCreateFileNameVectorFromDirectory = (HANDLE)_beginthreadex( // NATIVE CODE
+			hThreadCreateFileNameVectorFromDirectory = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 				NULL, // void *security,
 				sizeof(FILENAMEVECTORFROMDIRECTORY), // unsigned stack_size,
 				&CreateFileNameVectorFromDirectory, // unsigned ( __stdcall *start_address )( void * ),
 				&FileNameVectorFromDirectory, // void *arglist,
 				0U, // unsigned initflag,
 				NULL // unsigned *thrdaddr
-				);
+				));
 
 			hr = hThreadCreateFileNameVectorFromDirectory ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 		}
@@ -2753,7 +2803,7 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.LoadBitmapCurrent(g_FileName);
+		hr = renderer.LoadBitmapCurrent(g_FileName.c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -2932,10 +2982,11 @@ HRESULT CALLBACK TaskDialogCallbackProc(
   __in  LONG_PTR /*dwRefData*/
 )
 {
-	if (uNotification == TDN_HYPERLINK_CLICKED)
+	if (TDN_HYPERLINK_CLICKED == uNotification)
 	{
-		ShellExecuteW(hWnd, L"open", (LPCWSTR)lParam, NULL, NULL, SW_SHOWNORMAL);
+		ShellExecuteW(hWnd, L"open", reinterpret_cast<LPCWSTR>(lParam), NULL, NULL, SW_SHOWNORMAL);
 	}
+
 	return S_OK;
 }
 
@@ -2976,16 +3027,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_HELP:
 		{
-			MessageBoxW(NULL, L"0.9.0.1 (Debug)", L"Info", MB_OK);
+			MessageBoxW(
+				NULL,
+#ifdef _DEBUG
+				L"0.9.0.1 (Debug)",
+#else
+				L"0.9.0.1",
+#endif
+				L"Info",
+				MB_OK);
 			return TRUE;
 		}
 		break;
 
 	case WM_MENUCOMMAND:
 		{
-			if ((HMENU)lParam == hRightClickMenuTitleBar)
+			if (reinterpret_cast<HMENU>(lParam) == hRightClickMenuTitleBar)
 			{
-				ShellExecuteW(hWnd, L"explore", g_Directories[(UINT)wParam], NULL, NULL, SW_SHOWNORMAL);
+				// Ignore return value
+				ShellExecuteW(hWnd, L"explore", g_Directories[(UINT)wParam].c_str(), NULL, NULL, SW_SHOWNORMAL);
 				return 0;
 			}
 
@@ -2996,14 +3056,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_NCRBUTTONDOWN:
 	case WM_NCRBUTTONDBLCLK:
 		{
-			if (wParam == HTCAPTION)
+			if (HTCAPTION == wParam)
 			{
-				HRESULT hr = CreateRightClickMenuTitleBar(&hRightClickMenuTitleBar, g_FileName, &g_Directories);
+				HRESULT hr = CreateRightClickMenuTitleBar(&hRightClickMenuTitleBar, g_FileName.c_str(), &g_Directories);
+
 				if (SUCCEEDED(hr))
 				{
+					// Ignore return value
 					SetForegroundWindow(hWnd);
 
-					if (!TrackPopupMenu(hRightClickMenuTitleBar, (GetSystemMetrics(SM_MENUDROPALIGNMENT) == 0 ? TPM_LEFTALIGN : TPM_RIGHTALIGN) | TPM_TOPALIGN, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, hWnd, NULL))
+					if (!TrackPopupMenu(hRightClickMenuTitleBar, (0 == GetSystemMetrics(SM_MENUDROPALIGNMENT) ? TPM_LEFTALIGN : TPM_RIGHTALIGN) | TPM_TOPALIGN, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, hWnd, NULL))
 					{
 						if (GetLastError() != ERROR_POPUP_ALREADY_ACTIVE)
 						{
@@ -3034,7 +3096,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_SYSCOMMAND:
 		{
-			if (wParam == (0xFFF0 & SC_SCREENSAVE)) // To obtain the correct result when testing the value of wParam, an application must combine the value 0xFFF0 with the wParam value by using the bitwise AND operator.
+			if ((0xFFF0 & SC_SCREENSAVE) == wParam) // To obtain the correct result when testing the value of wParam, an application must combine the value 0xFFF0 with the wParam value by using the bitwise AND operator.
 			{
 				// Trap screensaver to prevent from launching
 				return 0;
@@ -3074,13 +3136,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 BOOL CALLBACK EnumWindowsProc(__in HWND hWnd, __in LPARAM lParam)
 {
-	if (LOWORD(lParam) == WM_CLOSE)
+	if (WM_CLOSE == LOWORD(lParam))
 	{
-		WCHAR buffer[WINDOWCLASSSTRINGLENGTH] = {0};
+		WCHAR buffer[ARRAYSIZE(szWindowClass)] = {0};
 
-		if (GetClassNameW(hWnd, buffer, WINDOWCLASSSTRINGLENGTH))
+		if (GetClassNameW(hWnd, buffer, ARRAYSIZE(szWindowClass)))
 		{
-			if (wcscmp(buffer, szWindowClass) == 0)
+			if (0 == wcscmp(buffer, szWindowClass))
 			{
 				PostMessageW(hWnd, WM_CLOSE, NULL, NULL);
 			}
@@ -3090,53 +3152,41 @@ BOOL CALLBACK EnumWindowsProc(__in HWND hWnd, __in LPARAM lParam)
 	return FALSE;
 }
 
-HRESULT GetPhysicalProcessorCount(UINT *Count)
+/*HRESULT GetPhysicalProcessorCount(UINT *Count)
 {
-	SYSTEM_INFO sysinfo = {0};
+	SYSTEM_INFO sysinfo = { 0 };
+
 	GetNativeSystemInfo(&sysinfo);
 
-	*Count = (UINT)sysinfo.dwNumberOfProcessors;
+	*Count = static_cast<UINT>(sysinfo.dwNumberOfProcessors);
 
 	return S_OK;
-}
+}*/
 
-HRESULT GetThumbnail(LPCWSTR FileName, HBITMAP *phBitmap)
+/*HRESULT GetThumbnail(LPCWSTR FileName, HBITMAP *phBitmap)
 {
-	IShellItemImageFactory *pShellItemImageFactory = nullptr;
+	Microsoft::WRL::ComPtr<IShellItemImageFactory> pShellItemImageFactory;
 
 	HRESULT hr = SHCreateItemFromParsingName(FileName, NULL, IID_PPV_ARGS(&pShellItemImageFactory));
 
 	if (SUCCEEDED(hr))
 	{
-		SIZE size = {0};
+		SIZE size = { 0 };
+
 		hr = pShellItemImageFactory->GetImage(size, SIIGBF_BIGGERSIZEOK | SIIGBF_INCACHEONLY, phBitmap);
 	}
 
-	SafeRelease(&pShellItemImageFactory);
-
 	return hr;
-}
+}*/
 
-UINT CountOccurencesOfCharacterInString(WCHAR character, LPCWSTR string)
+size_t CountOccurencesOfCharacterInString(wchar_t character, std::wstring * pString)
 {
-	if (string == nullptr)
+	if (nullptr == pString)
 	{
 		return 0U;
 	}
 
-    LPCWSTR p = string;
-    UINT count = 0U;
-
-    do
-	{
-        if (*p == character)
-		{
-			count++;
-		}
-    }
-	while (*(p++));
-
-    return count;
+    return std::count(pString->begin(), pString->end(), character);
 }
 
 /*wchar_t buffer[260];

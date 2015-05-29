@@ -5,44 +5,44 @@
 struct COMMONITEMDIALOGOPEN
 {
 	HWND hWnd;
-	LPCWSTR pszTitle;
+	std::wstring * pszTitle;
 	COMDLG_FILTERSPEC *rgFilterSpec;
 	UINT cFileTypes;
-	LPWSTR FileName;
+	std::wstring * FileName;
 
-	//COMMONITEMDIALOGOPEN() :
-	//	cFileTypes(0U),
-	//	rgFilterSpec(nullptr),
-	//	FileName(nullptr),
-	//	hWnd(nullptr),
-	//	pszTitle(nullptr)
-	//	{}
+	COMMONITEMDIALOGOPEN() :
+		hWnd(nullptr),
+		pszTitle(nullptr),
+		rgFilterSpec(nullptr),
+		cFileTypes(0U),
+		FileName(nullptr)		
+		{}
 };
 
 struct DELETEFILEWITHIFO
 {
 	HWND hWnd;
-	LPCWSTR FileName;
+	std::wstring * FileName;
 	bool Permanent;
 	bool Silent;
 
-	//DELETEFILEWITHIFO() :
-	//	hWnd(nullptr),
-	//	FileName(nullptr),
-	//	Permanent(false),
-	//	Silent(false)
-	//	{}
+	DELETEFILEWITHIFO() :
+		hWnd(nullptr),
+		FileName(nullptr),
+		Permanent(false),
+		Silent(false)
+		{}
 };
 
 struct RENAMEFILEWITHIFO
 {
-	LPCWSTR FileName;
-	LPCWSTR FileNameNew;
+	std::wstring * FileName;
+	std::wstring * FileNameNew;
 
-	//RENAMEFILEWITHIFO() :
-	//	FileName(nullptr),
-	//	FileNameNew(nullptr)
-	//	{}
+	RENAMEFILEWITHIFO() :
+		FileName(nullptr),
+		FileNameNew(nullptr)
+		{}
 };
 
 enum SORTBY
@@ -55,15 +55,14 @@ enum SORTBY
 // Global Variables:
 HINSTANCE hInst = nullptr; // current instance
 const WCHAR szTitle[] = L"Image Viewer"; // The title bar text
-#define WINDOWCLASSSTRINGLENGTH 51
-const WCHAR szWindowClass[WINDOWCLASSSTRINGLENGTH] = L"IMAGEVIEWER {445F6F25-065C-411D-B16E-A3E887660B76}"; // the main window class name
-WCHAR g_FileName[MAX_PATH_UNICODE] = L"\0"; // L"C:\\Users\\Max\\Desktop\\Optimal_Colony_Layout.png";
-WCHAR FileDirectory[MAX_PATH_UNICODE] = {0};
+const WCHAR szWindowClass[] = L"445F6F25-065C-411D-B16E-A3E887660B76"; // the main window class name
+std::wstring g_FileName; // L"C:\\Users\\Max\\Desktop\\Optimal_Colony_Layout.png";
+std::wstring FileDirectory;
 UINT g_FileNamePosition = 0U;
 UINT FileNamePositionPrevious = 0U;
 UINT FileNamePositionNext = 0U;
-std::vector <LPWSTR> g_Directories;
-std::vector <FILESTRUCT> g_Files;
+std::vector<std::wstring> g_Directories;
+std::vector<FILESTRUCT> g_Files;
 HCURSOR hCursorArrow = nullptr;
 HCURSOR hCursorHand = nullptr;
 HCURSOR hCursorHandClosed = nullptr;
@@ -76,10 +75,10 @@ LPWSTR *ArrayOfFileExtensions = nullptr;
 UINT NumberOfFileExtensions = 0U;
 HMENU hRightClickMenu = nullptr;
 HMENU hRightClickMenuTitleBar = nullptr;
-UINT g_NumberOfProcessors = 0;
+//UINT g_NumberOfProcessors = 0U;
 bool g_BlockMovement = false;
-COMMONITEMDIALOGOPEN g_commonitemdialogopen = {0};
-DELETEFILEWITHIFO g_deletefilewithifo = {0};
+COMMONITEMDIALOGOPEN g_commonitemdialogopen;
+DELETEFILEWITHIFO g_deletefilewithifo;
 extern UINT const DELAY_TIMER_ID = 1U;    // Global ID for the timer, only one timer is used
 SORTBY g_SortByCurrent = SORTBYNAME;
 bool g_SortByAscending = true;
@@ -136,20 +135,20 @@ void _OnPaint(HWND hWnd);
 BOOL _OnQueryEndSession(HWND /*hwnd*/);
 void _OnSize(HWND /*hWnd*/, UINT /*state*/, int cx, int cy);
 void _OnTimer(HWND hWnd, UINT id);
-UINT CountOccurencesOfCharacterInString(WCHAR character, LPCWSTR string);
+size_t CountOccurencesOfCharacterInString(wchar_t character, std::wstring * pString);
 	
-ATOM				MyRegisterClass(HINSTANCE hInstance);
-BOOL				InitInstance(HINSTANCE, int);
-LRESULT CALLBACK	WndProc(HWND, UINT, WPARAM, LPARAM);
-HRESULT				DeleteFileWithIFO(__in HWND hWnd, __in LPCWSTR FileName, __in bool Permanent, __in bool Silent);
-HRESULT				RenameFileWithIFO(__in LPCWSTR FileName, __in LPCWSTR FileNameNew);
-HRESULT				CommonItemDialogOpen(__in LPCWSTR pszTitle, __in COMDLG_FILTERSPEC *rgFilterSpec, __in UINT cFileTypes, __out LPWSTR FileName);
-HRESULT				DirectoryFromFileName(__out LPWSTR FileDirectory, __in LPCWSTR FileName);
-HRESULT				SetAsDesktopBackground(__in LPCWSTR FileName, __in DWORD dwStyle);
-bool				NaturalSort(const std::wstring &lhs, const std::wstring &rhs);
-unsigned __stdcall	CreateFileNameVectorFromDirectory(void* _ArgList);
-BOOL CALLBACK		EnumWindowsProc(__in HWND hWnd, __in LPARAM lParam);
-HRESULT CALLBACK	TaskDialogCallbackProc(__in  HWND hWnd, __in  UINT uNotification, __in  WPARAM wParam, __in  LPARAM lParam, __in  LONG_PTR dwRefData);
-HRESULT				CreateRightClickMenu(HMENU *hMenu);
-HRESULT				GetPhysicalProcessorCount(UINT *Count);
-HRESULT				GetThumbnail(LPCWSTR FileName, HBITMAP *phBitmap);
+ATOM MyRegisterClass(HINSTANCE hInstance);
+BOOL InitInstance(HINSTANCE, int);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+HRESULT DeleteFileWithIFO(__in HWND hWnd, __in std::wstring * FileName, __in bool Permanent, __in bool Silent);
+HRESULT RenameFileWithIFO(__in std::wstring * FileName, __in std::wstring * FileNameNew);
+HRESULT CommonItemDialogOpen(__in std::wstring * pszTitle, __in COMDLG_FILTERSPEC * rgFilterSpec, __in UINT cFileTypes, __out std::wstring * FileName);
+HRESULT DirectoryFromFileName(__out std::wstring * pfileDirectory, __in const wchar_t * filePath);
+HRESULT SetAsDesktopBackground(__in std::wstring * FileName, __in DWORD dwStyle);
+bool NaturalSort(const std::wstring &lhs, const std::wstring &rhs);
+unsigned int __stdcall CreateFileNameVectorFromDirectory(void* _ArgList);
+BOOL CALLBACK EnumWindowsProc(__in HWND hWnd, __in LPARAM lParam);
+HRESULT CALLBACK TaskDialogCallbackProc(__in  HWND hWnd, __in  UINT uNotification, __in  WPARAM wParam, __in  LPARAM lParam, __in  LONG_PTR dwRefData);
+HRESULT CreateRightClickMenu(HMENU * hMenu);
+HRESULT GetPhysicalProcessorCount(UINT * Count);
+//HRESULT GetThumbnail(LPCWSTR FileName, HBITMAP *phBitmap);

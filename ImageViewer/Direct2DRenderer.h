@@ -2,15 +2,15 @@
 
 #include <d2d1_1.h>
 #include <dwrite.h>
-#include <wincodec.h> // IWICImagingFactory
+#include <wincodec.h> // IWICImagingFactory2
 #include <Wincodecsdk.h> // IWICMetadataBlockWriter
 #include <Icm.h> // GetStandardColorSpaceProfileW
 #include <comdef.h>
 
 extern void ErrorDescription(HRESULT hr);
 extern void HRESULTDecode(HRESULT hr, LPWSTR Severity, LPWSTR Facility, LPWSTR ErrorDescription);
-extern UINT CountOccurencesOfCharacterInString(WCHAR character, LPCWSTR string);
-extern std::vector <FILESTRUCT> g_Files;
+extern size_t CountOccurencesOfCharacterInString(wchar_t character, std::wstring * pString);
+extern std::vector<FILESTRUCT> g_Files;
 extern UINT g_FileNamePosition;
 extern UINT FileNamePositionPrevious;
 extern UINT FileNamePositionNext;
@@ -46,8 +46,8 @@ struct FRAME_INFO
 {
 	Microsoft::WRL::ComPtr<ID2D1Bitmap> pBitmap;
 	D2D1_SIZE_F Size;
-	LPWSTR Title;
-	USHORT RotationFlag;
+	std::wstring Title;
+	unsigned char RotationFlag;
 	UINT m_uFrameDisposal;
 	UINT m_uFrameDelay;
 	D2D1_RECT_F m_framePosition;
@@ -60,7 +60,7 @@ struct FRAME_INFO
 		pBitmap(nullptr),
 		RotationFlag(1U),
 		Size(D2D1::SizeF(0.0F, 0.0F)),
-		Title(nullptr),
+		Title(),
 		UserInputFlag(false)
 		{}
 };
@@ -70,11 +70,11 @@ struct IMAGE_INFO
 	HRESULT LoadResult;
 	GUID guidContainerFormat;
 	UINT Frames;
-	FRAME_INFO *aFrameInfo;
+	std::vector<FRAME_INFO> aFrameInfo;
 	GIF_INFO GifInfo;
 
 	IMAGE_INFO() :
-		aFrameInfo(nullptr),
+		aFrameInfo(),
 		Frames(0U),
 		GifInfo(),
 		guidContainerFormat(GUID_NULL),
@@ -86,7 +86,7 @@ class Direct2DRenderer
 {
 public:
     Direct2DRenderer();
-    ~Direct2DRenderer();
+    //~Direct2DRenderer();
 	
 	HRESULT ActualSize();
 	HRESULT CreateDeviceIndependentResources();
@@ -138,26 +138,26 @@ private:
 	inline HRESULT GIF_GetBackgroundColor(IWICBitmapDecoder *pDecoder, IWICMetadataQueryReader *pMetadataQueryReader, D2D1_COLOR_F *BackgroundColor);
 
 	HRESULT LoadBitmapFromFile(
-        IWICImagingFactory *pIWICFactory,
+        IWICImagingFactory2 *pIWICFactory,
 		LPCWSTR FileName,
 		IWICColorContext *pContextDst,
 		ID2D1RenderTarget *pRenderTarget,
 		IMAGE_INFO *ImageInfo
         );
 
-	HRESULT RotateByMetadata(IWICImagingFactory *pIWICFactory, LPCWSTR FileName, USHORT *pRotationFlag, bool Clockwise);
+	HRESULT RotateByMetadata(IWICImagingFactory2 *pIWICFactory, LPCWSTR FileName, USHORT *pRotationFlag, bool Clockwise);
 	HRESULT RotateJPEG(LPCWSTR FileName, LPCWSTR FileNameTemporary, USHORT RotationFlag, bool Clockwise);
-	HRESULT RotateByReencode(IWICImagingFactory *pIWICFactory, LPCWSTR FileName, LPCWSTR FileNameTemporary, bool Clockwise);
+	HRESULT RotateByReencode(IWICImagingFactory2 *pIWICFactory, LPCWSTR FileName, LPCWSTR FileNameTemporary, bool Clockwise);
 
 	HRESULT ResetRenderingParameters();
 
-	HRESULT EnumerateDecoders(IWICImagingFactory *pIWICFactory, COMDLG_FILTERSPEC **ppFilterSpec, UINT *cFileTypes);
+	HRESULT EnumerateDecoders(IWICImagingFactory2 *pIWICFactory, COMDLG_FILTERSPEC **ppFilterSpec, UINT *cFileTypes);
 
 	HRESULT SetJPEGOrientation(LPCWSTR FileName);
 
 	HWND m_hWnd;
 	Microsoft::WRL::ComPtr<ID2D1Factory> m_pD2DFactory;
-	Microsoft::WRL::ComPtr<IWICImagingFactory> m_pWICFactory;
+	Microsoft::WRL::ComPtr<IWICImagingFactory2> m_pWICFactory;
 	Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> m_pRenderTarget;
 	IMAGE_INFO m_ImagePrevious;
 	IMAGE_INFO m_ImageCurrent;

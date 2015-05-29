@@ -22,6 +22,12 @@
     <None Include="ImageViewer.ico">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="HandOpen.cur">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="HandClosed.cur">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">

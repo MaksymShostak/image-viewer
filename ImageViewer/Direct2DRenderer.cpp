@@ -294,7 +294,7 @@ Direct2DRenderer::Direct2DRenderer() :
 {}
 
 //Release resources
-Direct2DRenderer::~Direct2DRenderer()
+/*Direct2DRenderer::~Direct2DRenderer()
 {
 	CloseHandle(hThreadCacheFileNamePrevious);
 	CloseHandle(hThreadCacheFileNameNext);
@@ -314,15 +314,6 @@ Direct2DRenderer::~Direct2DRenderer()
 		SafeRelease(m_ImageNext.aFrameInfo[i].pBitmap.GetAddressOf());
 	}
 
-	/*delete [] m_ImagePrevious.Title;
-	m_ImagePrevious.Title = nullptr;*/
-
-	/*delete [] m_ImageCurrent.Title;
-	m_ImageCurrent.Title = nullptr;*/
-
-	/*delete [] m_ImageNext.Title;
-	m_ImageNext.Title = nullptr;*/
-
 	SafeRelease(m_pDWriteFactory.GetAddressOf());
 	SafeRelease(m_pRenderTarget.GetAddressOf());
 	SafeRelease(m_pTextFormat.GetAddressOf());
@@ -331,7 +322,7 @@ Direct2DRenderer::~Direct2DRenderer()
 	SafeRelease(m_pD2DFactory.GetAddressOf());
 	//SafeRelease(&m_pContextDst); // Already destroyed by CoUninitialize() call that destroys m_pWICFactory that created this
 	//SafeRelease(&m_pWICFactory); // Already destroyed by CoUninitialize() call
-}
+}*/
 
 //
 //  Called whenever the application needs to display the client
@@ -352,7 +343,7 @@ HRESULT Direct2DRenderer::OnRender()
 	{
 		if (DeviceResourcesDiscarded)
 		{
-			LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath);
+			LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
 			DeviceResourcesDiscarded = false; // only reload once
 		}
 
@@ -615,7 +606,8 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 	WIN32_FILE_ATTRIBUTE_DATA FileAttributeDataOriginal = {0};
 	HANDLE HandleNew = nullptr;
 
-	HRESULT hr = StringCchCatW(FileNameUnicode, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath);
+	HRESULT hr = StringCchCatW(FileNameUnicode, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
+
 	if (SUCCEEDED(hr))
 	{
 		hr = GetFileAttributesExW(FileNameUnicode, GetFileExInfoStandard, &FileAttributeDataOriginal) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
@@ -623,7 +615,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 	
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCopyW(FileNameTemporary, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath);
+		hr = StringCchCopyW(FileNameTemporary, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -635,11 +627,11 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 	{
 		if (m_ImageCurrent.guidContainerFormat == GUID_ContainerFormatJpeg)
 		{
-			hr = RotateJPEG(g_Files[g_FileNamePosition].FullPath, FileNameTemporary, m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag, Clockwise);
+			hr = RotateJPEG(g_Files[g_FileNamePosition].FullPath.c_str(), FileNameTemporary, m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag, Clockwise);
 		}
 		else
 		{
-			hr = RotateByReencode(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath, FileNameTemporary, Clockwise);
+			hr = RotateByReencode(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), FileNameTemporary, Clockwise);
 			if (FAILED(hr) && hr != WINCODEC_ERR_ABORTED) // delete the temporary file we created in case the above function fails
 			{
 				if (SUCCEEDED(StringCchCatW(FileNameUnicode, MAX_PATH_UNICODE, L"temp")))
@@ -662,7 +654,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCatW(FileNameTemporary, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath);
+		hr = StringCchCatW(FileNameTemporary, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -693,7 +685,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath, m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageCurrent);
+		LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageCurrent);
 
 		ResetRenderingParameters();
 
@@ -703,7 +695,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 	return hr;
 }
 
-HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory *pIWICFactory, LPCWSTR FileName, LPCWSTR FileNameTemporary, bool Clockwise)
+HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory2 *pIWICFactory, LPCWSTR FileName, LPCWSTR FileNameTemporary, bool Clockwise)
 {
 	Microsoft::WRL::ComPtr<IWICBitmapDecoder> pDecoder;
 	Microsoft::WRL::ComPtr<IWICBitmapDecoderInfo> pWICBitmapDecoderInfo;
@@ -949,9 +941,7 @@ HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory *pIWICFactory, LPC
 		//Copy metadata using metadata block reader/writer.
 		if (SUCCEEDED(hr))
 		{
-			hr = piFrameDecode->QueryInterface(
-				IID_IWICMetadataBlockReader,
-				(LPVOID*)&piBlockReader);
+			hr = piFrameDecode.As(&piBlockReader);
 			
 			if (hr == E_NOINTERFACE) //Some data formats do not have metadata e.g. Bitmap
 			{
@@ -959,9 +949,7 @@ HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory *pIWICFactory, LPC
 			}
 			else if (SUCCEEDED(hr))
 			{
-				hr = piFrameEncode->QueryInterface(
-				IID_IWICMetadataBlockWriter,
-				(LPVOID*)&piBlockWriter);
+				hr = piFrameEncode.As(&piBlockWriter);
 
 				if (SUCCEEDED(hr))
 				{
@@ -1465,7 +1453,7 @@ HRESULT Direct2DRenderer::RotateJPEG(LPCWSTR FileName, LPCWSTR FileNameTemporary
 	return hr;
 }
 
-HRESULT Direct2DRenderer::RotateByMetadata(IWICImagingFactory *pIWICFactory, LPCWSTR FileName, USHORT *pRotationFlag,	bool /*Clockwise*/)
+HRESULT Direct2DRenderer::RotateByMetadata(IWICImagingFactory2 *pIWICFactory, LPCWSTR FileName, USHORT *pRotationFlag,	bool /*Clockwise*/)
 {
 	Microsoft::WRL::ComPtr<IWICBitmapDecoder> pDecoder;
 	Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> pSource;
@@ -1550,7 +1538,7 @@ HRESULT Direct2DRenderer::ActualSize()
 	return OnRender();
 }
 
-unsigned Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom)
+unsigned int Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom)
 {
 	if ((FileNamePositionToWorkFrom + 1U) < (UINT)g_Files.size())
 	{
@@ -1561,7 +1549,7 @@ unsigned Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom)
 		FileNamePositionNext = 0U;
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionNext].FullPath, m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageNext);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionNext].FullPath.c_str(), m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageNext);
 	if (FAILED(hr))
 	{
 		if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
@@ -1577,23 +1565,24 @@ unsigned Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom)
 	return hr;
 }
 
-unsigned Direct2DRenderer::CacheFileNamePrevious(UINT FileNamePositionToWorkFrom)
+unsigned int Direct2DRenderer::CacheFileNamePrevious(UINT FileNamePositionToWorkFrom)
 {
-	if (FileNamePositionToWorkFrom != 0U)
+	if (0U != FileNamePositionToWorkFrom)
 	{
 		FileNamePositionPrevious = FileNamePositionToWorkFrom - 1U;
 	}
 	else
 	{
-		FileNamePositionPrevious = (UINT)g_Files.size() - 1U;
+		FileNamePositionPrevious = static_cast<UINT>(g_Files.size()) - 1U;
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionPrevious].FullPath, m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImagePrevious);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionPrevious].FullPath.c_str(), m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImagePrevious);
+
 	if (FAILED(hr))
 	{
 		if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
 		{
-			return CacheFileNamePrevious((FileNamePositionToWorkFrom != 0U)? FileNamePositionToWorkFrom - 1U : (UINT)g_Files.size() - 1U);
+			return CacheFileNamePrevious((0U != FileNamePositionToWorkFrom)? FileNamePositionToWorkFrom - 1U : static_cast<UINT>(g_Files.size()) - 1U);
 		}
 		else
 		{
@@ -1692,7 +1681,7 @@ HRESULT Direct2DRenderer::CreateDeviceIndependentResources()
         HRESULT hr = D2D1CreateFactory(
             D2D1_FACTORY_TYPE_MULTI_THREADED,
             options,
-            &m_pD2DFactory
+            m_pD2DFactory.GetAddressOf()
             );
 	#else
 		HRESULT hr = D2D1CreateFactory(
@@ -1705,7 +1694,7 @@ HRESULT Direct2DRenderer::CreateDeviceIndependentResources()
     {OutputDebugStringW(L"D2D1CreateFactory\n");
         // Create WIC factory.
         hr = CoCreateInstance(
-            CLSID_WICImagingFactory,
+            CLSID_WICImagingFactory2,
             NULL,
             CLSCTX_INPROC_SERVER,
             IID_PPV_ARGS(&m_pWICFactory)
@@ -2040,14 +2029,13 @@ inline HRESULT Direct2DRenderer::GetFrameMetadata(IWICBitmapFrameDecode *pWICBit
 {
 	Microsoft::WRL::ComPtr<IWICMetadataQueryReader> pQueryReader;
 
-	PROPVARIANT propvariantOrientationFlag = {0};
-	PropVariantInit(&propvariantOrientationFlag);
-	PROPVARIANT propvariantImageDescription = {0};
-	PropVariantInit(&propvariantImageDescription);
-
 	HRESULT hr = pWICBitmapFrameDecode->GetMetadataQueryReader(&pQueryReader);
+
 	if (SUCCEEDED(hr))
 	{
+		PROPVARIANT propvariantOrientationFlag = { 0 };
+		PropVariantInit(&propvariantOrientationFlag);
+
 		hr = pQueryReader->GetMetadataByName(L"/app1/ifd/{ushort=274}", &propvariantOrientationFlag);
 		// if cannot find EXIF orientation try xmp
 		if (FAILED(hr))
@@ -2055,47 +2043,55 @@ inline HRESULT Direct2DRenderer::GetFrameMetadata(IWICBitmapFrameDecode *pWICBit
 			pQueryReader->GetMetadataByName(L"/xmp/tiff:Orientation", &propvariantOrientationFlag);
 		}
 
-		FrameInfo->RotationFlag = PropVariantToUInt16WithDefault(propvariantOrientationFlag, 1);
+		FrameInfo->RotationFlag = static_cast<unsigned char>(PropVariantToUInt16WithDefault(propvariantOrientationFlag, 1U));
+
+		PropVariantClear(&propvariantOrientationFlag);
+
 		/*if (!(1 <= FrameInfo->RotationFlag && FrameInfo->RotationFlag <= 8)) // do not change value of rotation flag, deal with incorrect data in other functions e.g. rotate will set these to 1
 		{
 			FrameInfo->RotationFlag = 1;
 		}*/
 		//hr = pQueryReader->GetMetadataByName(L"/com/TextEntry", &propvariantImageDescription); // usually information added by jpeg encoders, so pointless to display user
+
+		PROPVARIANT propvariantImageDescription = { 0 };
+		PropVariantInit(&propvariantImageDescription);
+
 		hr = pQueryReader->GetMetadataByName(L"/app1/ifd/{ushort=270}", &propvariantImageDescription);
+
 		if (SUCCEEDED(hr))
 		{
-			FrameInfo->Title = new WCHAR[USHRT_MAX];
-			wmemset(FrameInfo->Title, 0, USHRT_MAX);
+			LPWSTR pszTitle;
 
-			hr = PropVariantToString(propvariantImageDescription, FrameInfo->Title, USHRT_MAX);
+			hr = PropVariantToStringAlloc(propvariantImageDescription, &pszTitle);
+
 			if (SUCCEEDED(hr))
 			{
-				hr = AllSpaces(FrameInfo->Title) ? E_FAIL : S_OK;
-			}
+				hr = AllSpaces(pszTitle) ? E_FAIL : S_OK;
 
-			if (FAILED(hr))
-			{
-				delete [] FrameInfo->Title;
-			}
+				if (SUCCEEDED(hr))
+				{
+					FrameInfo->Title = pszTitle;
+				}
+
+				CoTaskMemFree(pszTitle);
+			}			
 		}
+
+		PropVariantClear(&propvariantImageDescription);
 
 		if (FAILED(hr))
 		{
-			FrameInfo->Title = nullptr;
+			FrameInfo->Title = L"";
 			hr = S_OK;
 		}
 	}
 	else // if cannot get QueryReader
 	{
 		FrameInfo->RotationFlag = 1U;
-		FrameInfo->Title = nullptr;
+		FrameInfo->Title = L"";
 
 		hr = S_OK;
 	}
-
-	//SafeRelease(&pQueryReader);
-	PropVariantClear(&propvariantOrientationFlag);
-	PropVariantClear(&propvariantImageDescription);
 
 	return hr;
 }
@@ -2104,7 +2100,7 @@ inline HRESULT Direct2DRenderer::GetFrameMetadata(IWICBitmapFrameDecode *pWICBit
 // Creates a Direct2D bitmap from the specified file name.
 //
 HRESULT Direct2DRenderer::LoadBitmapFromFile(
-	IWICImagingFactory *pIWICFactory,
+	IWICImagingFactory2 *pIWICFactory,
 	LPCWSTR FileName,
 	IWICColorContext *pContextDst,
     ID2D1RenderTarget *pRenderTarget,
@@ -2115,8 +2111,6 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 	Microsoft::WRL::ComPtr<IWICBitmapDecoder> pDecoder;
 
-	UINT MaximumBitmapSize = pRenderTarget->GetMaximumBitmapSize();
-
 	HRESULT hr = pIWICFactory->CreateDecoderFromFilename(
         FileName,
         NULL,
@@ -2124,6 +2118,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
         WICDecodeMetadataCacheOnLoad,
 		&pDecoder
         );
+
 	if (FAILED(hr)) // try to load without caching metadata
 	{
 		hr = pIWICFactory->CreateDecoderFromFilename(
@@ -2147,7 +2142,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 	if (SUCCEEDED(hr))
     {
-		ImageInfo->aFrameInfo = new FRAME_INFO[ImageInfo->Frames];
+		ImageInfo->aFrameInfo.resize(ImageInfo->Frames);
     }
 	
 	if (SUCCEEDED(hr))
@@ -2169,8 +2164,6 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 		{WCHAR buffer[260] = {0}; StringCchPrintfW(buffer, 260, L"Frame: %d\n", i); OutputDebugStringW(buffer);
 			
 		Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> pSource;
-		Microsoft::WRL::ComPtr<IWICColorTransform> pColorTransform;
-		Microsoft::WRL::ComPtr<IWICFormatConverter> pConverter;
 			//IWICBitmap *pBitmap = nullptr;
 			//IWICBitmapFlipRotator *pFlipRotator = nullptr;
 			UINT colorContextCount = 0U;
@@ -2184,6 +2177,8 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 				if (SUCCEEDED(pSource->GetSize(&width, &height)))
 				{
+					UINT MaximumBitmapSize = pRenderTarget->GetMaximumBitmapSize();
+
 					if (width > MaximumBitmapSize || height > MaximumBitmapSize)
 					{
 						hr = D2DERR_MAX_TEXTURE_SIZE_EXCEEDED;
@@ -2203,6 +2198,8 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 					hr = GetFrameMetadata(pSource.Get(), &(ImageInfo->aFrameInfo[i]));
 				}
 			}
+
+			Microsoft::WRL::ComPtr<IWICColorTransform> pColorTransform;
 
 			// Transform colours
 			if (SUCCEEDED(hr))
@@ -2327,6 +2324,8 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 			//	}
 			//}
 
+			Microsoft::WRL::ComPtr<IWICFormatConverter> pConverter;
+
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"Handled rotation\n");
 				// Convert the image format to 32bppPBGRA
@@ -2381,14 +2380,22 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 		{
 			Microsoft::WRL::ComPtr<ID2D1BitmapRenderTarget> m_pFrameComposeRT;
 
-			hr = pRenderTarget->CreateCompatibleRenderTarget(D2D1::SizeF(static_cast<FLOAT>(ImageInfo->GifInfo.Size.width), static_cast<FLOAT>(ImageInfo->GifInfo.Size.height)), &m_pFrameComposeRT); // Composed frames have the same sizes as the global gif image size
+			hr = pRenderTarget->CreateCompatibleRenderTarget(
+				// Composed frames have the same sizes as the global gif image size
+				D2D1::SizeF(
+					static_cast<FLOAT>(ImageInfo->GifInfo.Size.width),
+					static_cast<FLOAT>(ImageInfo->GifInfo.Size.height)
+					),
+				&m_pFrameComposeRT
+				);
+
 			if (SUCCEEDED(hr))
 			{
 				// Start producing the bitmap
 				m_pFrameComposeRT->BeginDraw();
 
 				// If first frame
-				if (i == 0U)
+				if (0U == i)
 				{
 					// Draw background
 					m_pFrameComposeRT->Clear(ImageInfo->GifInfo.BackgroundColor);
@@ -2436,12 +2443,17 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 			if (SUCCEEDED(hr))
 			{
 				D2D1_SIZE_U BitmapSize = ImageInfo->aFrameInfo[i].pBitmap->GetPixelSize();
+
 				D2D1_SIZE_U RTSize = m_pFrameComposeRT->GetPixelSize();
+
 				if (BitmapSize.width != RTSize.width || BitmapSize.height != RTSize.height)
 				{
 					SafeRelease(ImageInfo->aFrameInfo[i].pBitmap.GetAddressOf());
+
 					D2D1_BITMAP_PROPERTIES props;
+
 					m_pFrameComposeRT->GetDpi(&props.dpiX, &props.dpiY);
+
 					props.pixelFormat = m_pFrameComposeRT->GetPixelFormat();
 
 					hr = pRenderTarget->CreateBitmap(RTSize, props, &ImageInfo->aFrameInfo[i].pBitmap);
@@ -2452,7 +2464,6 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 					hr = ImageInfo->aFrameInfo[i].pBitmap->CopyFromRenderTarget(NULL, m_pFrameComposeRT.Get(), NULL);
 				}
 			}
-			//SafeRelease(&m_pFrameComposeRT);
 		}
 	}
 
@@ -2743,6 +2754,7 @@ HRESULT Direct2DRenderer::ReloadAfterSort()
 HRESULT Direct2DRenderer::LoadBitmapCurrent(LPCWSTR FileName)
 {
 	HRESULT hr = CreateDeviceResources();
+
 	if (SUCCEEDED(hr))
 	{
 		LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageCurrent);
@@ -2980,15 +2992,7 @@ HRESULT Direct2DRenderer::OnNext()
 	FileNamePositionPrevious = g_FileNamePosition;
 	g_FileNamePosition = FileNamePositionNext;
 
-	for (UINT i = 0U; i < m_ImagePrevious.Frames; i++)
-	{
-		SafeRelease(m_ImagePrevious.aFrameInfo[i].pBitmap.GetAddressOf());
-	}
-
-	delete [] m_ImagePrevious.aFrameInfo;
-
-	//delete [] m_ImagePrevious.Title;
-	//m_ImagePrevious.Title = nullptr;
+	m_ImagePrevious = IMAGE_INFO();
 
 	m_ImagePrevious = m_ImageCurrent;
 	m_ImageCurrent = m_ImageNext;
@@ -3037,15 +3041,8 @@ HRESULT Direct2DRenderer::OnPrevious()
 	FileNamePositionNext = g_FileNamePosition;
 	g_FileNamePosition = FileNamePositionPrevious;
 
-	for (UINT i = 0U; i < m_ImageNext.Frames; i++)
-	{
-		SafeRelease(m_ImageNext.aFrameInfo[i].pBitmap.GetAddressOf());
-	}
-
-	delete [] m_ImageNext.aFrameInfo;
-
-	//delete [] m_ImageNext.Title;
-	//m_ImageNext.Title = nullptr;
+	// Reset the image info to be a fresh instance
+	m_ImageNext = IMAGE_INFO();
 
 	m_ImageNext = m_ImageCurrent;
 	m_ImageCurrent = m_ImagePrevious;
@@ -3087,72 +3084,77 @@ HRESULT Direct2DRenderer::SetTitleBarText()
 {
 	HRESULT hr = E_FAIL;
 
-	LPWSTR TitleBarText = nullptr;
-	short FileTitleLength = 0;
+	// If you successfully loaded the image
+	if (SUCCEEDED(m_ImageCurrent.LoadResult))
+	{
+		short FileTitleLength = 0;
 
-	if (SUCCEEDED(m_ImageCurrent.LoadResult) && m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title)
-	{
-		FileTitleLength = static_cast<short>(wcsnlen(m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title, SHRT_MAX) + 1);
-	}
-	else
-	{
-		FileTitleLength = GetFileTitleW(g_Files[g_FileNamePosition].FullPath, NULL, 0);
-		if (FileTitleLength < 0)
+		// if there is a title
+		if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.empty())
 		{
-			return E_FAIL;
-		}
-	}
-
-	if (SUCCEEDED(m_ImageCurrent.LoadResult) && m_ImageCurrent.Frames > 1U && m_ImageCurrent.guidContainerFormat != GUID_ContainerFormatGif)
-	{
-		LPWSTR FramePart = nullptr;
-		UINT FramePartLength = 8/*space+bracket+"Frame"+space*/ + NumberOfDigits(m_FrameCurrent+1) + 1/*slash*/ + NumberOfDigits(m_ImageCurrent.Frames) + 2/*bracket+null char*/;
-
-		FramePart = new WCHAR[FramePartLength];
-		wmemset(FramePart, 0, FramePartLength);
-
-		StringCchPrintfW(FramePart, FramePartLength, L" (Frame %d/%d)", m_FrameCurrent+1, m_ImageCurrent.Frames);
-
-		TitleBarText = new WCHAR[FileTitleLength + FramePartLength];
-		wmemset(TitleBarText, 0, (FileTitleLength + FramePartLength));
-
-		if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title)
-		{
-			StringCchCopyW(TitleBarText, FileTitleLength, m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title);
+			// get its length
+			FileTitleLength = static_cast<short>(m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.length());
 		}
 		else
 		{
-			GetFileTitleW(g_Files[g_FileNamePosition].FullPath, TitleBarText, (WORD)FileTitleLength);
+			// get the title from the path name
+			FileTitleLength = GetFileTitleW(g_Files[g_FileNamePosition].FullPath.c_str(), NULL, 0);
+			if (FileTitleLength <= 0)
+			{
+				return E_FAIL;
+			}
 		}
 
-		StringCchCatW(TitleBarText, FileTitleLength + FramePartLength, FramePart);
+		std::wstring TitleBarText;
 
-		hr = S_OK;
-		
-		delete [] FramePart;
-	}
-	else
-	{
-		TitleBarText = new WCHAR[FileTitleLength];
-
-		if (SUCCEEDED(m_ImageCurrent.LoadResult) && m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title)
+		// If there is more than one frame
+		if (m_ImageCurrent.Frames > 1U &&
+			// and the image is not a GIF
+			GUID_ContainerFormatGif != m_ImageCurrent.guidContainerFormat)
 		{
-			StringCchCopyW(TitleBarText, FileTitleLength, m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title);
+			std::wstring FramePart;
+			size_t FramePartLength = 8U/*space+bracket+"Frame"+space*/ + NumberOfDigits(m_FrameCurrent) + 1U + 1U/*slash*/ + NumberOfDigits(m_ImageCurrent.Frames) + 2U/*bracket+null char*/;
+
+			FramePart.resize(FramePartLength);
+
+			StringCchPrintfW(&FramePart[0], FramePartLength, L" (Frame %d/%d)", m_FrameCurrent + 1U, m_ImageCurrent.Frames);
+
+			TitleBarText.resize(FileTitleLength + FramePartLength);
+
+			if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.empty())
+			{
+				TitleBarText = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title;
+			}
+			else
+			{
+				GetFileTitleW(g_Files[g_FileNamePosition].FullPath.c_str(), &TitleBarText[0], static_cast<WORD>(FileTitleLength));
+			}
+
+			TitleBarText = TitleBarText + FramePart;
+
+			hr = S_OK;
 		}
 		else
 		{
-			GetFileTitleW(g_Files[g_FileNamePosition].FullPath, TitleBarText, (WORD)FileTitleLength);
+			TitleBarText.resize(FileTitleLength);
+
+			if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.empty())
+			{
+				TitleBarText = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title;
+			}
+			else
+			{
+				GetFileTitleW(g_Files[g_FileNamePosition].FullPath.c_str(), &TitleBarText[0], static_cast<WORD>(FileTitleLength));
+			}
+
+			hr = S_OK;
 		}
 
-		hr = S_OK;
+		if (SUCCEEDED(hr))
+		{
+			hr = SetWindowTextW(m_hWnd, TitleBarText.c_str()) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+		}
 	}
-
-	if (SUCCEEDED(hr))
-	{
-		hr = SetWindowTextW(m_hWnd, TitleBarText) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
-	}
-
-	delete [] TitleBarText;
 
 	return hr;
 }
@@ -3162,157 +3164,159 @@ HRESULT Direct2DRenderer::EnumerateDecoders(COMDLG_FILTERSPEC **paFilterSpec, UI
 	return EnumerateDecoders(m_pWICFactory.Get(), paFilterSpec, cFileTypes);
 }
 
-HRESULT Direct2DRenderer::EnumerateDecoders(IWICImagingFactory *pIWICFactory, COMDLG_FILTERSPEC **paFilterSpec, UINT *cFileTypes)
+HRESULT Direct2DRenderer::EnumerateDecoders(IWICImagingFactory2 *pIWICFactory, COMDLG_FILTERSPEC **paFilterSpec, UINT *cFileTypes)
 {
 	Microsoft::WRL::ComPtr<IEnumUnknown> piEnumUnknown;
-	Microsoft::WRL::ComPtr<IUnknown> piUnknown;
-	Microsoft::WRL::ComPtr<IWICBitmapDecoderInfo> piBitmapDecoderInfo;
-	UINT NumberOfDecoders = 0U;
-	ULONG num = 0L;
 
-	HRESULT hr = pIWICFactory->CreateComponentEnumerator(WICDecoder, WICComponentEnumerateDefault | WICComponentEnumerateRefresh, &piEnumUnknown); // WICComponentEnumerateRefresh will makes sure registry settings read for new decoders
+	HRESULT hr = pIWICFactory->CreateComponentEnumerator(
+		WICDecoder,
+		// WICComponentEnumerateRefresh will makes sure registry settings are read for new decoders
+		WICComponentEnumerateDefault | WICComponentEnumerateRefresh,
+		&piEnumUnknown);
+
 	if (SUCCEEDED(hr))
 	{
 		hr = piEnumUnknown->Reset();
-	}
-	
-	if (SUCCEEDED(hr))
-	{
-		while ((SUCCEEDED(piEnumUnknown->Next(1L, &piUnknown, &num))) && (num == 1L))
+
+		if (SUCCEEDED(hr))
 		{
-			NumberOfDecoders++;
-		}
-		
-		*cFileTypes = NumberOfDecoders + 2U; // 1 for all found extensions and 1 for All files (*.*)
+			Microsoft::WRL::ComPtr<IUnknown> piUnknown;
+			ULONG num = 0UL;
+			UINT NumberOfDecoders = 0U;
 
-		if (paFilterSpec == nullptr) // function called this way to return number of decoders
-		{
-			return S_OK;
-		}
+			while ((SUCCEEDED(piEnumUnknown->Next(1UL, &piUnknown, &num))) && (num == 1UL))
+			{
+				NumberOfDecoders++;
+			}
 
-		hr = piEnumUnknown->Reset();
-	}
-	
-	if (SUCCEEDED(hr))
-	{
-		LPWSTR pszAllExtensions = nullptr; // not deleted
-		pszAllExtensions = new WCHAR[1000]; // find the length properly, don't be lazy
-		wmemset(pszAllExtensions, 0, 1000);
+			*cFileTypes = NumberOfDecoders + 2U; // 1 for all found extensions and 1 for All files (*.*)
 
-		UINT CurrentDecoder = 1U;
+			if (paFilterSpec == nullptr) // function called this way to return number of decoders
+			{
+				return S_OK;
+			}
 
-		while ((SUCCEEDED(piEnumUnknown->Next(1L, &piUnknown, &num))) && (num == 1L))
-		{
-			hr = piUnknown->QueryInterface(IID_PPV_ARGS(&piBitmapDecoderInfo));
+			hr = piEnumUnknown->Reset();
+
 			if (SUCCEEDED(hr))
 			{
-				GUID guidContainerFormat = GUID_NULL;
-				bool HasEncoder = false;
+				LPWSTR pszAllExtensions = nullptr; // not deleted
+				pszAllExtensions = new WCHAR[1000]; // find the length properly, don't be lazy
+				wmemset(pszAllExtensions, 0, 1000);
 
-				hr = piBitmapDecoderInfo->GetContainerFormat(&guidContainerFormat);
-				if (SUCCEEDED(hr))
+				UINT CurrentDecoder = 1U;
+
+				while ((SUCCEEDED(piEnumUnknown->Next(1L, &piUnknown, &num))) && (num == 1L))
 				{
-					Microsoft::WRL::ComPtr<IWICBitmapEncoder> pEncoder = nullptr;
+					Microsoft::WRL::ComPtr<IWICBitmapDecoderInfo> piBitmapDecoderInfo;
 
-					if (SUCCEEDED(pIWICFactory->CreateEncoder(guidContainerFormat, NULL, &pEncoder)))
+					hr = piUnknown.As(&piBitmapDecoderInfo);
+
+					if (SUCCEEDED(hr))
 					{
-						HasEncoder = true;
+						GUID guidContainerFormat = GUID_NULL;
+						
+						hr = piBitmapDecoderInfo->GetContainerFormat(&guidContainerFormat);
+
+						if (SUCCEEDED(hr))
+						{
+							Microsoft::WRL::ComPtr<IWICBitmapEncoder> pEncoder;
+							bool HasEncoder = false;
+
+							if (SUCCEEDED(pIWICFactory->CreateEncoder(guidContainerFormat, NULL, &pEncoder)))
+							{
+								HasEncoder = true;
+							}
+							else
+							{
+								HasEncoder = false;
+							}
+
+							DecoderHasEncoder.insert(std::pair<GUID, bool>(guidContainerFormat, HasEncoder));
+						}
+
+						UINT uActual = 0U;
+
+						if (SUCCEEDED(hr))
+						{
+							hr = piBitmapDecoderInfo->GetFriendlyName(0U, NULL, &uActual);
+						}
+
+						LPWSTR pszFriendlyName = nullptr;
+						std::wstring pszExtensions;
+						LPWSTR pszSpecTemp = nullptr;
+
+						LPWSTR pszName = nullptr; // not deleted
+						LPWSTR pszSpec = nullptr; // not deleted
+
+						if (SUCCEEDED(hr))
+						{
+							if (uActual > 0U)
+							{
+								pszFriendlyName = new WCHAR[uActual];
+								if (pszFriendlyName)
+								{
+									wmemset(pszFriendlyName, 0, uActual);
+									hr = piBitmapDecoderInfo->GetFriendlyName(uActual, pszFriendlyName, &uActual);
+								}
+
+								pszName = new WCHAR[uActual - 8U]; // subtract 8 characters of " Decoder" ending
+								if (pszName)
+								{
+									wmemset(pszName, 0, (uActual - 8U));
+									StringCchCopyW(pszName, uActual - 8, pszFriendlyName); // this fails with less buffer error, check
+								}
+							}
+						}
+
+						if (SUCCEEDED(hr))
+						{
+							// Extension
+							hr = piBitmapDecoderInfo->GetFileExtensions(0U, NULL, &uActual);
+							if (uActual > 0U)
+							{
+								pszExtensions.resize(uActual);
+
+								hr = piBitmapDecoderInfo->GetFileExtensions(uActual, &pszExtensions[0], &uActual);
+
+								pszSpecTemp = new WCHAR[uActual + CountOccurencesOfCharacterInString('.', &pszExtensions)];
+
+								if (pszSpecTemp)
+								{
+									ReplaceCharInString(pszExtensions.c_str(), pszSpecTemp, '.', L"*.");
+								}
+
+								pszSpec = new WCHAR[uActual + CountOccurencesOfCharacterInString('.', &pszExtensions)];
+
+								if (pszSpec)
+								{
+									ReplaceCharInString(pszSpecTemp, pszSpec, ',', L";");
+								}
+							}
+						}
+
+						(*paFilterSpec)[CurrentDecoder].pszName = pszName;
+						(*paFilterSpec)[CurrentDecoder].pszSpec = pszSpec;
+
+						StringCchCatW(pszAllExtensions, 1000, pszSpec);
+						if (CurrentDecoder != NumberOfDecoders)
+						{
+							StringCchCatW(pszAllExtensions, 1000, L";");
+						}
+
+						delete[] pszSpecTemp;
+						delete[] pszFriendlyName;
 					}
-					else
-					{
-						HasEncoder = false;
-					}
-
-					SafeRelease(pEncoder.GetAddressOf());
-
-					DecoderHasEncoder.insert(std::pair<GUID, bool>(guidContainerFormat, HasEncoder));
+					CurrentDecoder++;
 				}
+				(*paFilterSpec)[0].pszName = L"All image files";
+				(*paFilterSpec)[0].pszSpec = pszAllExtensions;
 
-				LPWSTR pszFriendlyName = nullptr;
-				LPWSTR pszExtensions = nullptr;
-				LPWSTR pszSpecTemp = nullptr;
-
-				LPWSTR pszName = nullptr; // not deleted
-				LPWSTR pszSpec = nullptr; // not deleted
-				
-				UINT uActual = 0U;
-
-				if (SUCCEEDED(hr))
-				{
-					hr = piBitmapDecoderInfo->GetFriendlyName(0U, NULL, &uActual);
-				}
-
-				if (SUCCEEDED(hr))
-				{
-					if (uActual > 0U)
-					{
-						pszFriendlyName = new (std::nothrow) WCHAR[uActual];
-						if (pszFriendlyName)
-						{
-							wmemset(pszFriendlyName, 0, uActual);
-							hr = piBitmapDecoderInfo->GetFriendlyName(uActual, pszFriendlyName, &uActual);
-						}
-
-						pszName = new (std::nothrow) WCHAR[uActual - 8U]; // subtract 8 characters of " Decoder" ending
-						if (pszName)
-						{
-							wmemset(pszName, 0, (uActual - 8U));
-							StringCchCopyW(pszName, uActual - 8, pszFriendlyName); // this fails with less buffer error, check
-						}
-					}
-				}
-
-				if (SUCCEEDED(hr))
-				{
-					// Extension
-					hr = piBitmapDecoderInfo->GetFileExtensions(0U, NULL, &uActual);
-					if (uActual > 0U)
-					{
-						pszExtensions = new (std::nothrow) WCHAR[uActual];
-						if (pszExtensions)
-						{
-							wmemset(pszExtensions, 0, uActual);
-							hr = piBitmapDecoderInfo->GetFileExtensions(uActual, pszExtensions, &uActual);
-						}
-
-						pszSpecTemp = new (std::nothrow) WCHAR[uActual + CountOccurencesOfCharacterInString('.', pszExtensions)];
-						if (pszSpecTemp)
-						{
-							ReplaceCharInString(pszExtensions, pszSpecTemp, '.', L"*.");
-						}
-
-						pszSpec= new (std::nothrow) WCHAR[uActual + CountOccurencesOfCharacterInString('.', pszExtensions)];
-						if (pszSpec)
-						{
-							ReplaceCharInString(pszSpecTemp, pszSpec, ',', L";");
-						}
-					}
-				}
-
-				(*paFilterSpec)[CurrentDecoder].pszName = pszName;
-				(*paFilterSpec)[CurrentDecoder].pszSpec = pszSpec;
-
-				StringCchCatW(pszAllExtensions, 1000, pszSpec);
-				if (CurrentDecoder != NumberOfDecoders)
-				{
-					StringCchCatW(pszAllExtensions, 1000, L";");
-				}
-
-				delete [] pszSpecTemp;
-				delete [] pszFriendlyName;
-				delete [] pszExtensions;
-			}	
-			CurrentDecoder++;
+				(*paFilterSpec)[CurrentDecoder].pszName = L"All files";
+				(*paFilterSpec)[CurrentDecoder].pszSpec = L"*.*";
+			}
 		}
-		(*paFilterSpec)[0].pszName = L"All image files";
-		(*paFilterSpec)[0].pszSpec = pszAllExtensions;
-
-		(*paFilterSpec)[CurrentDecoder].pszName = L"All files";
-		(*paFilterSpec)[CurrentDecoder].pszSpec = L"*.*";
 	}
-	SafeRelease(piBitmapDecoderInfo.GetAddressOf());
-	SafeRelease(piUnknown.GetAddressOf());
-	SafeRelease(piEnumUnknown.GetAddressOf());
 
 	return S_OK;
 }
@@ -3329,7 +3333,7 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
 {
 	PROPVARIANT propValue = {0};
 	PropVariantInit(&propValue);
-	Microsoft::WRL::ComPtr<IWICMetadataQueryReader> pMetadataQueryReader = nullptr;
+	Microsoft::WRL::ComPtr<IWICMetadataQueryReader> pMetadataQueryReader;
 	
 	// Create a MetadataQueryReader from the decoder
 	HRESULT hr = pDecoder->GetMetadataQueryReader(&pMetadataQueryReader);
@@ -3338,6 +3342,7 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
 	if (SUCCEEDED(hr))
     {
 		hr = ConformGIF ? GIF_GetBackgroundColor(pDecoder, pMetadataQueryReader.Get(), &(ImageInfo->GifInfo.BackgroundColor)) : E_FAIL;
+
 		if (FAILED(hr))
 		{
 			// Default to transparent if failed to get the color
@@ -3351,13 +3356,16 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
     {
         // Get width
         hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/Width", &propValue);
+
         if (SUCCEEDED(hr))
         {
             hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL);
+
             if (SUCCEEDED(hr))
             {
 				ImageInfo->GifInfo.Size.width = propValue.uiVal;
             }
+
             PropVariantClear(&propValue);
         }
     }
@@ -3366,13 +3374,16 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
     {
         // Get height
         hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/Height", &propValue);
+
         if (SUCCEEDED(hr))
         {
             hr = (propValue.vt == VT_UI2 ? S_OK : E_FAIL);
+
             if (SUCCEEDED(hr))
             {
                 ImageInfo->GifInfo.Size.height = propValue.uiVal;
             }
+
             PropVariantClear(&propValue);
         }
     }
@@ -3381,9 +3392,11 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
     {
         // Get pixel aspect ratio
         hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/PixelAspectRatio", &propValue);
+
         if (SUCCEEDED(hr))
         {
             hr = (propValue.vt == VT_UI1 ? S_OK : E_FAIL);
+
             if (SUCCEEDED(hr))
             {
 				UINT uPixelAspRatio = propValue.bVal;
@@ -3506,7 +3519,6 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
 	//}
 
     PropVariantClear(&propValue);
-    SafeRelease(pMetadataQueryReader.GetAddressOf());
 
     return hr;
 }
@@ -3521,159 +3533,144 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
 
 inline HRESULT Direct2DRenderer::GIF_GetBackgroundColor(IWICBitmapDecoder *pDecoder, IWICMetadataQueryReader *pMetadataQueryReader, D2D1_COLOR_F *BackgroundColor)
 {
-	Microsoft::WRL::ComPtr<IWICPalette> pWicPalette;
-    DWORD dwBGColor = 0;
-    BYTE backgroundIndex = 0;
-	UINT GlobalColorTableSize = 0U;
-	WICColor rgColors[256] = {0};
-    UINT cColorsCopied = 0U;
-	PROPVARIANT propVariant = {0};
-    PropVariantInit(&propVariant);
+	PROPVARIANT propVariant = { 0 };
+	PropVariantInit(&propVariant);
 
-    // If we have a global palette, get the palette and background color
-    HRESULT hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/GlobalColorTableFlag", &propVariant);
-    if (SUCCEEDED(hr))
-    {
-        hr = (propVariant.vt != VT_BOOL || !propVariant.boolVal) ? E_FAIL : S_OK;
-        PropVariantClear(&propVariant);
-    }
+	// If we have a global palette, get the palette and background color
+	HRESULT hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/GlobalColorTableFlag", &propVariant);
+	if (FAILED(hr)) { return hr; }
+
+	// If the value is not a BOOL or there is no global color table
+	if (propVariant.vt != VT_BOOL || !propVariant.boolVal)
+	{
+		return E_FAIL;
+	}
+
+	PropVariantClear(&propVariant);
+
+	WICColor rgColors[256] = { 0 };
+
+	// Set sensible fall back to the number of WICColors
+	UINT GlobalColorTableSize = ARRAYSIZE(rgColors);
+
+	hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/GlobalColorTableSize", &propVariant);
 
 	if (SUCCEEDED(hr))
-    {
-		hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/GlobalColorTableSize", &propVariant);
-		if (SUCCEEDED(hr))
-        {
-			hr = (propVariant.vt != VT_UI1) ? E_FAIL : S_OK;
-            if (SUCCEEDED(hr))
-            {
-				GlobalColorTableSize = static_cast<UINT>(pow(2.0f, propVariant.bVal + 1));
-			}
-			PropVariantClear(&propVariant);
-		}
-
-		if (FAILED(hr)) // fallback to 256
+	{
+		if (VT_UI1 == propVariant.vt)
 		{
-			GlobalColorTableSize = ARRAYSIZE(rgColors);
-			hr = S_OK;
+			GlobalColorTableSize = static_cast<UINT>(pow(2.0f, propVariant.bVal + 1));
 		}
 	}
 
-    if (SUCCEEDED(hr))
-    {
-        // Background color index
-        hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/BackgroundColorIndex", &propVariant);
-        if (SUCCEEDED(hr))
-        {
-            hr = (propVariant.vt != VT_UI1) ? E_FAIL : S_OK;
-            if (SUCCEEDED(hr))
-            {
-                backgroundIndex = propVariant.bVal;
-            }
-            PropVariantClear(&propVariant);
-        }
-    }
+	PropVariantClear(&propVariant);
 
-    // Get the color from the palette
-    if (SUCCEEDED(hr))
-    {
-        hr = m_pWICFactory->CreatePalette(&pWicPalette);
-    }
+	BYTE backgroundIndex = 0;
 
-    if (SUCCEEDED(hr))
-    {
-        // Get the global palette
-        hr = pDecoder->CopyPalette(pWicPalette.Get());
-    }
+	// Background color index
+	hr = pMetadataQueryReader->GetMetadataByName(L"/logscrdesc/BackgroundColorIndex", &propVariant);
 
-    if (SUCCEEDED(hr))
-    {
-        hr = pWicPalette->GetColors(GlobalColorTableSize, rgColors, &cColorsCopied);
-    }
+	if (SUCCEEDED(hr))
+	{
+		if (VT_UI1 == propVariant.vt)
+		{
+			backgroundIndex = propVariant.bVal;
+		}
+		else
+		{
+			return E_FAIL;
+		}
+	}
 
-    if (SUCCEEDED(hr))
-    {
-        // Check whether background color is outside range 
-        hr = (backgroundIndex >= GlobalColorTableSize) ? E_FAIL : S_OK;
-    }
+	PropVariantClear(&propVariant);
 
-    if (SUCCEEDED(hr))
-    {
-        // Get the color in ARGB format
-        dwBGColor = rgColors[backgroundIndex];
+	Microsoft::WRL::ComPtr<IWICPalette> pWicPalette;
 
-        // The background color is in ARGB format, and we want to 
-        // extract the alpha value and convert it in FLOAT
-        FLOAT alpha = (dwBGColor >> 24) / 255.0F;
-        *BackgroundColor = D2D1::ColorF(dwBGColor, alpha);
-    }
+	// Get the color from the palette
+	hr = m_pWICFactory->CreatePalette(&pWicPalette);
+	if (FAILED(hr)) { return hr; }
 
-    SafeRelease(pWicPalette.GetAddressOf());
-    return hr;
+	// Get the global palette
+	hr = pDecoder->CopyPalette(pWicPalette.Get());
+	if (FAILED(hr)) { return hr; }
+
+	UINT cColorsCopied = 0U;
+
+	hr = pWicPalette->GetColors(GlobalColorTableSize, rgColors, &cColorsCopied);
+	if (FAILED(hr)) { return hr; }
+
+	// If the background color is outside the range 
+	if (backgroundIndex >= GlobalColorTableSize)
+	{
+		return E_FAIL;
+	}
+
+	DWORD dwBGColor = 0;
+
+	// Get the color in ARGB format
+	dwBGColor = rgColors[backgroundIndex];
+
+	// The background color is in ARGB format, and we want to 
+	// extract the alpha value and convert it in FLOAT
+	FLOAT alpha = (dwBGColor >> 24) / 255.0F;
+
+	*BackgroundColor = D2D1::ColorF(dwBGColor, alpha);
+
+	return hr;
 }
 
-HRESULT Invert()
+/*HRESULT Invert()
 {
-	Microsoft::WRL::ComPtr<IWICImagingFactory> pFactory;
-	Microsoft::WRL::ComPtr<IWICBitmap> pBitmap;
+	Microsoft::WRL::ComPtr<IWICImagingFactory2> pFactory;
 
-    INT iWidth = 640;
-    INT iHeight = 480;
-    WICPixelFormatGUID formatGUID = GUID_WICPixelFormat32bppPBGRA;
+	HRESULT hr = CoCreateInstance(
+		CLSID_WICImagingFactory2,
+		NULL,
+		CLSCTX_INPROC_SERVER,
+		IID_PPV_ARGS(&pFactory)
+		);
 
-    WICRect rcLock = { 0, 0, iWidth, iHeight };
-	Microsoft::WRL::ComPtr<IWICBitmapLock> pLock;
+	if (SUCCEEDED(hr))
+	{
+		INT iWidth = 640;
+		INT iHeight = 480;
 
-    HRESULT hr = CoCreateInstance(
-        CLSID_WICImagingFactory,
-        NULL,
-        CLSCTX_INPROC_SERVER,
-        IID_IWICImagingFactory,
-        (LPVOID*)&pFactory
-        );
+		WICPixelFormatGUID formatGUID = GUID_WICPixelFormat32bppPBGRA;
 
-    if (SUCCEEDED(hr))
-    {
-        hr = pFactory->CreateBitmap(iWidth, iHeight, formatGUID, WICBitmapCacheOnDemand, &pBitmap);
-    }
+		Microsoft::WRL::ComPtr<IWICBitmap> pBitmap;
 
-    if (SUCCEEDED(hr))
-    {
-        hr = pBitmap->Lock(&rcLock, WICBitmapLockWrite, &pLock);
+		hr = pFactory->CreateBitmap(iWidth, iHeight, formatGUID, WICBitmapCacheOnDemand, &pBitmap);
 
-        if (SUCCEEDED(hr))
-        {
-            UINT cbBufferSize = 0;
-            UINT cbStride = 0;
-            BYTE *pv = NULL;
+		if (SUCCEEDED(hr))
+		{
+			WICRect rcLock = { 0, 0, iWidth, iHeight };
 
-            // Retrieve the stride.
-            hr = pLock->GetStride(&cbStride);
+			Microsoft::WRL::ComPtr<IWICBitmapLock> pLock;
 
-            if (SUCCEEDED(hr))
-            {
-                hr = pLock->GetDataPointer(&cbBufferSize, &pv);
-            }
-            
-            // Zero out memory pointed to by the lock.
-            ZeroMemory(pv, cbBufferSize);
+			hr = pBitmap->Lock(&rcLock, WICBitmapLockWrite, &pLock);
 
-            // Release the bitmap lock.
-            pLock->Release();
-        }
-    }
+			if (SUCCEEDED(hr))
+			{
+				UINT cbBufferSize = 0U;
+				UINT cbStride = 0U;
+				BYTE *pv = nullptr;
 
-    if (pBitmap)
-    {
-        pBitmap->Release();
-    }
+				// Retrieve the stride.
+				hr = pLock->GetStride(&cbStride);
 
-    if (pFactory)
-    {
-        pFactory->Release();
-    }
+				if (SUCCEEDED(hr))
+				{
+					hr = pLock->GetDataPointer(&cbBufferSize, &pv);
+				}
+
+				// Zero out memory pointed to by the lock.
+				ZeroMemory(pv, cbBufferSize);
+			}
+		}
+	}
 
     return hr;
-}
+}*/
 
 //D2D1_MATRIX_3X2_F transform;
 	//m_pRenderTarget->GetTransform(&transform);

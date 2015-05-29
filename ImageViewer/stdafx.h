@@ -5,15 +5,15 @@
 #pragma once
 
 #ifndef NTDDI_VERSION // Allow use of features specific to Windows Vista or later.
-#define NTDDI_VERSION NTDDI_WIN7 // Change this to the appropriate value to target other versions of Windows.
+#define NTDDI_VERSION NTDDI_WIN8 // Change this to the appropriate value to target other versions of Windows.
 #endif
 
 #ifndef WINVER // Allow use of features specific to Windows Vista or later.
-#define WINVER _WIN32_WINNT_WIN7 // Change this to the appropriate value to target other versions of Windows.
+#define WINVER _WIN32_WINNT_WIN8 // Change this to the appropriate value to target other versions of Windows.
 #endif
 
 #ifndef _WIN32_WINNT // Allow use of features specific to Windows Vista or later.
-#define _WIN32_WINNT _WIN32_WINNT_WIN7 // Change this to the appropriate value to target other versions of Windows.
+#define _WIN32_WINNT _WIN32_WINNT_WIN8 // Change this to the appropriate value to target other versions of Windows.
 #endif
 
 #ifndef UNICODE
@@ -55,16 +55,15 @@
 #include <Shobjidl.h> // IFileOperation
 #include <Wininet.h> // required for #include <Shlobj.h>
 #include <Shlobj.h> // IActiveDesktop
-//#include <ppl.h> // async_future
-//#include <agents.h> // async_future
 #include <process.h> // _beginthreadex
 #include <Shlwapi.h> // PathRemoveFileSpecW, PathStripPath
 #include <algorithm> // std::sort
-//#include <D3D9.h>
 #include <Propvarutil.h> // InitPropVariantFromInt16
 #include "jpeglib.h" // jpeg_stdio_src
 #include <wrl\client.h> // Microsoft::WRL::ComPtr
 #include <memory> // std::unique_ptr
+#include <Pathcch.h> // PathCchRemoveFileSpec
+#include <climits> // MIN_INT
 
 extern "C" {
 #include "transupp.h" // Support routines for jpegtran
@@ -78,10 +77,10 @@ extern "C" {
 struct FILESTRUCT
 {
 	UINT ID;
-	LPWSTR FullPath;
-	unsigned long long SizeInBytes;
+	std::wstring FullPath;
+	size_t SizeInBytes;
 	SYSTEMTIME DateModified;
-	HBITMAP Thumbnail;
+	//HBITMAP Thumbnail;
 };
 
 template<class Interface>
@@ -94,56 +93,63 @@ inline void SafeRelease(Interface **ppInterfaceToRelease)
 	}
 }
 
-inline UINT NumberOfDigits(UINT n)
+// generic solution
+template <class T>
+int NumberOfDigits(T number)
 {
-	UINT i = 0U;
-
-	if (n == 0)
-	{
-		return 1U;
+	int digits = 0;
+	if (number < 0) digits = 1; // remove this line if '-' counts as a digit
+	while (number) {
+		number /= 10;
+		digits++;
 	}
-
-	while (n)
-	{
-		n /= 10;
-		i++;
-	};
-	
-	return i;
+	return digits;
 }
 
-//template <typename T>
-//class async_future
-//{
-//public:
-//   template <class Functor>
-//   explicit async_future(Functor&& fn)
-//   {
-//      // Execute the work function in a task group and send the result
-//      // to the single_assignment object.
-//      Concurrency::_tasks.run([fn, this]() {
-//         Concurrency::send(_value, fn());
-//       });
-//   }
-//
-//   ~async_future()
-//   {
-//      // Wait for the task to finish.
-//      Concurrency::_tasks.wait();
-//   }
-//
-//   // Retrieves the result of the work function.
-//   // This method blocks if the async_future object is still 
-//   // computing the value.
-//   T get()
-//   { 
-//      return Concurrency::receive(_value); 
-//   }
-//
-//private:
-//   // Executes the asynchronous work function.
-//   Concurrency::task_group _tasks;
-//
-//   // Stores the result of the asynchronous work function.
-//   Concurrency::single_assignment<T> _value;
-//};
+// partial specialization optimization for 32-bit numbers
+template<>
+int NumberOfDigits(int32_t x)
+{
+	if (x == INT_MIN) return 10 + 1;
+	if (x < 0) return NumberOfDigits(-x) + 1;
+
+	if (x >= 10000) {
+		if (x >= 10000000) {
+			if (x >= 100000000) {
+				if (x >= 1000000000)
+					return 10;
+				return 9;
+			}
+			return 8;
+		}
+		if (x >= 100000) {
+			if (x >= 1000000)
+				return 7;
+			return 6;
+		}
+		return 5;
+	}
+	if (x >= 100) {
+		if (x >= 1000)
+			return 4;
+		return 3;
+	}
+	if (x >= 10)
+		return 2;
+	return 1;
+}
+
+// partial-specialization optimization for 8-bit numbers
+template <>
+int NumberOfDigits(char n)
+{
+	// if you have the time, replace this with a static initialization to avoid
+	// the initial overhead & unnecessary branch
+	static char x[256] = { 0 };
+	if (x[0] == 0) {
+		for (char c = 1; c != 0; c++)
+			x[c] = static_cast<char>(NumberOfDigits(static_cast<int32_t>(c)));
+		x[0] = 1;
+	}
+	return x[n];
+}

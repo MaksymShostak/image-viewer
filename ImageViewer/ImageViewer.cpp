@@ -1338,8 +1338,9 @@ HRESULT CreateRightClickMenu(HMENU *hMenu)
 	return hr;
 }
 
-HRESULT CreateRightClickMenuTitleBar(HMENU * hMenu, LPCWSTR FileName, std::vector<std::wstring> * Directories)
+HRESULT CreateRightClickMenuTitleBar(HMENU * hMenu, LPCWSTR filePath, std::vector<std::wstring> * directories)
 {
+	// Initialise to S_OK so that we return 'successful' if the hMenu already exists
 	HRESULT hr = S_OK;
 
 	if (!*hMenu)
@@ -1350,67 +1351,62 @@ HRESULT CreateRightClickMenuTitleBar(HMENU * hMenu, LPCWSTR FileName, std::vecto
 
 		if (SUCCEEDED(hr))
 		{
-			MENUINFO MenuInfo = {0};
+			MENUINFO MenuInfo = { 0 };
 			MenuInfo.cbSize = sizeof(MENUINFO);
 			MenuInfo.fMask = MIM_STYLE;
 			MenuInfo.dwStyle = MNS_NOTIFYBYPOS;
 
 			hr = SetMenuInfo(*hMenu, &MenuInfo) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
-		}
 
-		if (SUCCEEDED(hr))
-		{
-			WCHAR FileNameTemp[MAX_PATH_UNICODE] = {0};
-			SIZE size = {GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON)};
-
-			hr = StringCchCopyW(FileNameTemp, MAX_PATH_UNICODE, FileName);
-
-			while (SUCCEEDED(hr) && PathRemoveFileSpec(FileNameTemp))
+			if (SUCCEEDED(hr))
 			{
-				LPWSTR FileDirectoryTemp = nullptr;
-				size_t LengthOfFileDirectoryTemp = wcslen(FileNameTemp) + 1;
+				WCHAR filePathTemp[MAX_PATH_UNICODE] = { 0 };
 
-				FileDirectoryTemp = new WCHAR[LengthOfFileDirectoryTemp];
-				wmemset(FileDirectoryTemp, 0, LengthOfFileDirectoryTemp);
+				hr = StringCchCopyW(filePathTemp, MAX_PATH_UNICODE, filePath);
 
-				hr = FileDirectoryTemp ? S_OK : E_OUTOFMEMORY;
-
-				if (SUCCEEDED(hr))
+				while (SUCCEEDED(hr))
 				{
-					hr = StringCchCopyW(FileDirectoryTemp, LengthOfFileDirectoryTemp, FileNameTemp);
-				}
+					hr = PathCchRemoveFileSpec(filePathTemp, MAX_PATH_UNICODE);
 
-				if (SUCCEEDED(hr))
-				{
-					Directories->push_back(FileDirectoryTemp);
-
-					MENUITEMINFO mii = {0};
-					mii.cbSize = sizeof(MENUITEMINFO);
-					mii.fMask = MIIM_BITMAP | MIIM_FTYPE | MIIM_STRING;
-					mii.fType = MFT_STRING;
-					mii.dwTypeData = PathCchIsRoot(FileDirectoryTemp) ? FileDirectoryTemp : wcsrchr(FileDirectoryTemp, L'\\') + 1;
-					mii.cch = static_cast<UINT>(LengthOfFileDirectoryTemp);
-
-					HBITMAP hBitmap = nullptr;
-					Microsoft::WRL::ComPtr<IShellItemImageFactory> pShellItemImageFactory = nullptr;
-
-					if (SUCCEEDED(SHCreateItemFromParsingName(FileDirectoryTemp, NULL, IID_PPV_ARGS(&pShellItemImageFactory))))
+					// If PathCchRemoveFileSpec returns S_FALSE there was nothing to remove
+					if (S_FALSE == hr)
 					{
-						pShellItemImageFactory->GetImage(
-							size,
-							(IsWindows8OrGreater() ? SIIGBF_SCALEUP | SIIGBF_RESIZETOFIT : SIIGBF_RESIZETOFIT),
-							&hBitmap);
+						// so return from the loop
+						break;
 					}
 
-					mii.hbmpItem = hBitmap;
-
-					if (1 == Directories->size())
+					if (SUCCEEDED(hr))
 					{
-						mii.fMask = mii.fMask | MIIM_STATE;
-						mii.fState = MFS_DEFAULT;
+						directories->push_back(filePathTemp);
+
+						MENUITEMINFO mii = { 0 };
+						mii.cbSize = sizeof(MENUITEMINFO);
+						mii.fMask = MIIM_BITMAP | MIIM_FTYPE | MIIM_STRING;
+						mii.fType = MFT_STRING;
+						mii.dwTypeData = (PathCchIsRoot(filePathTemp) ? filePathTemp : wcsrchr(filePathTemp, L'\\') + 1);
+						mii.cch = static_cast<UINT>(wcslen(filePathTemp));
+
+						Microsoft::WRL::ComPtr<IShellItemImageFactory> pShellItemImageFactory;
+
+						if (SUCCEEDED(SHCreateItemFromParsingName(filePathTemp, NULL, IID_PPV_ARGS(&pShellItemImageFactory))))
+						{
+							SIZE sizeOfIcon = { GetSystemMetrics(SM_CXICON), GetSystemMetrics(SM_CYICON) };
+
+							// Ignore return value
+							pShellItemImageFactory->GetImage(
+								sizeOfIcon,
+								SIIGBF_RESIZETOFIT,
+								&mii.hbmpItem);
+						}
+
+						if (1U == directories->size())
+						{
+							mii.fMask = mii.fMask | MIIM_STATE;
+							mii.fState = MFS_DEFAULT;
+						}
+
+						hr = InsertMenuItemW(*hMenu, UINT_MAX, TRUE, &mii) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 					}
-			
-					hr = InsertMenuItemW(*hMenu, (UINT)-1, TRUE, &mii) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 				}
 			}
 		}

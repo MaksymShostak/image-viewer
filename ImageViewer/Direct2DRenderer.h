@@ -1,11 +1,12 @@
 #pragma once
 
 #include <d2d1_1.h>
-#include <dwrite.h>
+#include <dwrite_1.h>
 #include <wincodec.h> // IWICImagingFactory2
 #include <Wincodecsdk.h> // IWICMetadataBlockWriter
 #include <Icm.h> // GetStandardColorSpaceProfileW
 #include <comdef.h>
+#include <d3d11_1.h>
 
 extern void ErrorDescription(HRESULT hr);
 extern void HRESULTDecode(HRESULT hr, LPWSTR Severity, LPWSTR Facility, LPWSTR ErrorDescription);
@@ -44,7 +45,7 @@ struct GIF_INFO
 
 struct FRAME_INFO
 {
-	Microsoft::WRL::ComPtr<ID2D1Bitmap> pBitmap;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap1> pBitmap;
 	D2D1_SIZE_F Size;
 	std::wstring Title;
 	unsigned char RotationFlag;
@@ -101,7 +102,7 @@ public:
 	HRESULT OnNext();
 	HRESULT OnPrevious();
 	HRESULT OnRender();
-	void OnResize(UINT width, UINT height);
+	HRESULT OnResize(UINT width, UINT height);
 	HRESULT ReloadAfterSort();
 	HRESULT Rotate(bool Clockwise);
 	HRESULT ScaleToWindow();
@@ -141,7 +142,7 @@ private:
         IWICImagingFactory2 *pIWICFactory,
 		LPCWSTR FileName,
 		IWICColorContext *pContextDst,
-		ID2D1RenderTarget *pRenderTarget,
+		ID2D1DeviceContext *pRenderTarget,
 		IMAGE_INFO *ImageInfo
         );
 
@@ -156,9 +157,16 @@ private:
 	HRESULT SetJPEGOrientation(LPCWSTR FileName);
 
 	HWND m_hWnd;
-	Microsoft::WRL::ComPtr<ID2D1Factory> m_pD2DFactory;
+	Microsoft::WRL::ComPtr<ID3D11Device1> _pID3D11Device1;
+	Microsoft::WRL::ComPtr<ID3D11DeviceContext1> _pID3D11DeviceContext1;
+	Microsoft::WRL::ComPtr<ID2D1Device> _pID2D1Device;
+	Microsoft::WRL::ComPtr<IDXGISwapChain1> _pIDXGISwapChain1;
+	// Direct2D target rendering bitmap
+	// (linked to DXGI back buffer which is linked to Direct3D pipeline)
+	Microsoft::WRL::ComPtr<ID2D1Bitmap1> _pID2D1Bitmap1_BackBuffer;
+	Microsoft::WRL::ComPtr<ID2D1Factory1> m_pD2DFactory;
 	Microsoft::WRL::ComPtr<IWICImagingFactory2> m_pWICFactory;
-	Microsoft::WRL::ComPtr<ID2D1HwndRenderTarget> m_pRenderTarget;
+	Microsoft::WRL::ComPtr<ID2D1DeviceContext> m_pRenderTarget;
 	IMAGE_INFO m_ImagePrevious;
 	IMAGE_INFO m_ImageCurrent;
 	IMAGE_INFO m_ImageNext;
@@ -177,7 +185,7 @@ private:
 	D2D1_MATRIX_3X2_F m_TransformMatrixScale;
 	bool m_FitToWindow;
 	bool m_ScaleToWindow;
-	Microsoft::WRL::ComPtr<IDWriteFactory> m_pDWriteFactory;
+	Microsoft::WRL::ComPtr<IDWriteFactory1> m_pDWriteFactory;
 	Microsoft::WRL::ComPtr<IDWriteTextFormat> m_pTextFormat;
 	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_pBlackBrush;
 	Microsoft::WRL::ComPtr<ID2D1SolidColorBrush> m_pWhiteBrush;

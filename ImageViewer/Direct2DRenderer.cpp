@@ -339,7 +339,7 @@ HRESULT Direct2DRenderer::OnRender()
 {
     HRESULT hr = CreateDeviceResources();
 
-    if (SUCCEEDED(hr) && !(m_pRenderTarget->CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED))
+    if (SUCCEEDED(hr))
 	{
 		if (DeviceResourcesDiscarded)
 		{
@@ -489,7 +489,9 @@ HRESULT Direct2DRenderer::OnRender()
 						0.0f,
 						(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.width,
 						(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.height
-					)
+					),
+					1.0F,
+					D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC
 				);
 			}
 			
@@ -532,7 +534,19 @@ HRESULT Direct2DRenderer::OnRender()
 
         hr = m_pRenderTarget->EndDraw();
 
-        if (hr == D2DERR_RECREATE_TARGET)
+		if (SUCCEEDED(hr))
+		{
+			// Present (new for Direct2D 1.1)
+			DXGI_PRESENT_PARAMETERS parameters = { 0 };
+			parameters.DirtyRectsCount = 0;
+			parameters.pDirtyRects = nullptr;
+			parameters.pScrollRect = nullptr;
+			parameters.pScrollOffset = nullptr;
+
+			hr = _pIDXGISwapChain1->Present1(1U, 0U, &parameters);
+		}
+
+        if (D2DERR_RECREATE_TARGET == hr)
         {
             hr = S_OK;
             DiscardDeviceResources();
@@ -1671,25 +1685,23 @@ HRESULT Direct2DRenderer::CalculateDrawRectangle(D2D1_RECT_F &drawRect)
 HRESULT Direct2DRenderer::CreateDeviceIndependentResources()
 {OutputDebugStringW(L"Direct2DRenderer::CreateDeviceIndependentResources\n");
 	static const WCHAR msc_fontName[] = L"Segoe UI";
-    static const FLOAT msc_fontSize = 12.0f;
+    static const FLOAT msc_fontSize = 12.0F;
 
     // Create a Direct2D factory.
-	#if defined(DEBUG) || defined(_DEBUG)
-        D2D1_FACTORY_OPTIONS options;
-        options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+	
+    D2D1_FACTORY_OPTIONS options;
+	ZeroMemory(&options, sizeof(D2D1_FACTORY_OPTIONS));
 
-        HRESULT hr = D2D1CreateFactory(
-            D2D1_FACTORY_TYPE_MULTI_THREADED,
-            options,
-            m_pD2DFactory.GetAddressOf()
-            );
-	#else
-		HRESULT hr = D2D1CreateFactory(
-			D2D1_FACTORY_TYPE_MULTI_THREADED,
-			m_pD2DFactory.GetAddressOf()
-			);
-	#endif
+#if defined(DEBUG) || defined(_DEBUG)
+    options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+#endif
 
+    HRESULT hr = D2D1CreateFactory(
+        D2D1_FACTORY_TYPE_MULTI_THREADED,
+        options,
+        m_pD2DFactory.GetAddressOf()
+        );
+	
     if (SUCCEEDED(hr))
     {OutputDebugStringW(L"D2D1CreateFactory\n");
         // Create WIC factory.
@@ -1752,51 +1764,91 @@ HRESULT Direct2DRenderer::CreateDeviceResources()
 
     if (!m_pRenderTarget)
     {OutputDebugStringW(L"!m_pRenderTarget\n");
-		RECT rc = {0};
 
-        if (GetClientRect(m_hWnd, &rc))
-		{OutputDebugStringW(L"GetClientRect(m_hWnd, &rc)\n");
-			hr = S_OK;
-		}
-		else
-		{OutputDebugStringW(L"GetClientRect(m_hWnd, &rc) FAILED\n");
-			hr = HRESULT_FROM_WIN32(GetLastError());// E_FAIL; Does this even throw a LastError?
-		}
+		// This flag adds support for surfaces with a different color channel ordering than the API default.
+		// You need it for compatibility with Direct2D.
+		UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+		// This array defines the set of DirectX hardware feature levels this app supports.
+		// The ordering is important and you should preserve it.
+		// Don't forget to declare your app's minimum required feature level in its
+		// description. All apps are assumed to support 9.1 unless otherwise stated.
+		D3D_FEATURE_LEVEL featureLevels[] =
+		{
+			D3D_FEATURE_LEVEL_11_1,
+			D3D_FEATURE_LEVEL_11_0,
+			D3D_FEATURE_LEVEL_10_1,
+			D3D_FEATURE_LEVEL_10_0,
+			D3D_FEATURE_LEVEL_9_3,
+			D3D_FEATURE_LEVEL_9_2,
+			D3D_FEATURE_LEVEL_9_1
+		};
+
+		// Create Direct3D device and context
+		Microsoft::WRL::ComPtr<ID3D11Device> pID3D11Device;
+
+		Microsoft::WRL::ComPtr<ID3D11DeviceContext> pID3D11DeviceContext;
+
+		D3D_FEATURE_LEVEL returnedFeatureLevel;
+
+		hr = D3D11CreateDevice(
+			nullptr, // use the default adapter
+			D3D_DRIVER_TYPE_HARDWARE, // hardware acceleration
+			0, // no software rasterizer
+			creationFlags, // supported feature levels
+			featureLevels, // supported feature levels
+			ARRAYSIZE(featureLevels),
+			D3D11_SDK_VERSION, // current SDK version
+			&pID3D11Device, // returns the Direct3D device created
+			&returnedFeatureLevel, // returns feature level of device created
+			&pID3D11DeviceContext // returns the device immediate context
+			);
+		if (FAILED(hr)) { return hr; }
+
+		hr = pID3D11Device.As(&_pID3D11Device1);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pID3D11Device.As(&_pID3D11Device1)\n");
+
+		hr = pID3D11DeviceContext.As(&_pID3D11DeviceContext1);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pID3D11DeviceContext.As(&_pID3D11DeviceContext1)\n");
+
+		Microsoft::WRL::ComPtr<IDXGIDevice1> pIDXGIDevice1;
+
+		hr = _pID3D11Device1.As(&pIDXGIDevice1);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"_pID3D11Device1.As(&pIDXGIDevice)\n");
+
+		hr = m_pD2DFactory->CreateDevice(pIDXGIDevice1.Get(), &_pID2D1Device);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pD2DFactory->CreateDevice(pIDXGIDevice.Get(), &_pID2D1Device)\n");
+
+		hr = _pID2D1Device->CreateDeviceContext(
+			D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+			&m_pRenderTarget);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"_pID2D1Device->CreateDeviceContext\n");
+
+        // Create a black brush.
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &m_pBlackBrush);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pRenderTarget->CreateSolidColorBrush (Black)\n");
+
+        // Create a black brush.
+        hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &m_pWhiteBrush);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pRenderTarget->CreateSolidColorBrush (White)\n");
+
+		hr = m_pD2DFactory->ReloadSystemMetrics();
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pD2DFactory->ReloadSystemMetrics()\n");
+
+		m_pD2DFactory->GetDesktopDpi(&m_dpiX, &m_dpiY);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pD2DFactory->GetDesktopDpi\n");
 
 		if (SUCCEEDED(hr))
 		{
-			// Create a Direct2D render target.
-			hr = m_pD2DFactory->CreateHwndRenderTarget(
-				D2D1::RenderTargetProperties(),
-				D2D1::HwndRenderTargetProperties(m_hWnd, D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)),
-				&m_pRenderTarget
-				);
-		}
-
-		if (SUCCEEDED(hr))
-        {OutputDebugStringW(L"m_pD2DFactory->CreateHwndRenderTarget\n");
-            // Create a black brush.
-            hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &m_pBlackBrush);
-        }
-
-		if (SUCCEEDED(hr))
-        {OutputDebugStringW(L"m_pRenderTarget->CreateSolidColorBrush (Black)\n");
-            // Create a black brush.
-            hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &m_pWhiteBrush);
-        }
-
-		if (SUCCEEDED(hr))
-		{OutputDebugStringW(L"m_pRenderTarget->CreateSolidColorBrush (White)\n");
-			hr = m_pD2DFactory->ReloadSystemMetrics();
-		}
-
-		if (SUCCEEDED(hr))
-		{OutputDebugStringW(L"m_pD2DFactory->ReloadSystemMetrics\n");
-			m_pD2DFactory->GetDesktopDpi(&m_dpiX, &m_dpiY);
-		}
-
-		if (SUCCEEDED(hr))
-		{OutputDebugStringW(L"m_pD2DFactory->GetDesktopDpi\n");
 			DWORD dwSize = MAX_PATH_UNICODE;
 			WCHAR ICMProfileName[MAX_PATH_UNICODE] = {0};
 
@@ -1812,11 +1864,85 @@ HRESULT Direct2DRenderer::CreateDeviceResources()
 					}
 				}
 			}
-			if (ReleaseDC(m_hWnd, hDC) == 1)
+			if (1 == ReleaseDC(m_hWnd, hDC))
 			{
 				OutputDebugStringW(L"ReleaseDC\n");
 			}
 		}
+
+		// Allocate a descriptor.
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+		swapChainDesc.Width = 0U; // use automatic sizing
+		swapChainDesc.Height = 0U;
+		swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
+		swapChainDesc.Stereo = false;
+		swapChainDesc.SampleDesc.Count = 1U; // don't use multi-sampling
+		swapChainDesc.SampleDesc.Quality = 0U;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount = 2U; // use double buffering to enable flip
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH; // CreateSwapChainForHwnd compatible option
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // CreateSwapChainForHwnd compatible option 
+		swapChainDesc.Flags = 0U;
+
+		// Identify the physical adapter (GPU or card) this device is runs on.
+		Microsoft::WRL::ComPtr<IDXGIAdapter> pIDXGIAdapter;
+
+		hr = pIDXGIDevice1->GetAdapter(&pIDXGIAdapter);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIDevice->GetAdapter\n");
+
+		// Get the factory object that created the DXGI device.
+		Microsoft::WRL::ComPtr<IDXGIFactory2> pIDXGIFactory2;
+
+		hr = pIDXGIAdapter->GetParent(IID_PPV_ARGS(&pIDXGIFactory2));
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIAdapter->GetParent\n");
+
+		// Create DXGI swap chain targeting a window handle (the only Windows 7-compatible option)
+		hr = pIDXGIFactory2->CreateSwapChainForHwnd(
+			_pID3D11Device1.Get(),
+			m_hWnd,
+			&swapChainDesc,
+			nullptr,
+			nullptr,
+			&_pIDXGISwapChain1
+			);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIFactory2->CreateSwapChainForHwnd\n");
+
+		// Ensure that DXGI doesn't queue more than one frame at a time.
+		hr = pIDXGIDevice1->SetMaximumFrameLatency(1U);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIDevice->SetMaximumFrameLatency\n");
+
+		// Get the back buffer as an IDXGISurface (Direct2D doesn't accept an ID3D11Texture2D directly as a render target)
+		Microsoft::WRL::ComPtr<IDXGISurface> pIDXGISurface;
+
+		hr = _pIDXGISwapChain1->GetBuffer(0, IID_PPV_ARGS(&pIDXGISurface));
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"_pIDXGISwapChain1->GetBuffer\n");
+
+		// Create a Direct2D surface (bitmap) linked to the Direct3D texture back buffer via the DXGI back buffer
+		D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+			D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+			D2D1::PixelFormat(
+				DXGI_FORMAT_B8G8R8A8_UNORM,
+				D2D1_ALPHA_MODE_IGNORE),
+			m_dpiX,
+			m_dpiY
+			);
+
+		hr = m_pRenderTarget->CreateBitmapFromDxgiSurface(
+			pIDXGISurface.Get(),
+			&bitmapProperties,
+			&_pID2D1Bitmap1_BackBuffer
+			);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pRenderTarget->CreateBitmapFromDxgiSurface\n");
+
+		// Set surface as render target in Direct2D device context
+		m_pRenderTarget->SetTarget(_pID2D1Bitmap1_BackBuffer.Get());
+		OutputDebugStringW(L"m_pRenderTarget->SetTarget\n");
     }
 
     return hr;
@@ -1843,19 +1969,15 @@ void Direct2DRenderer::DiscardDeviceResources()
 		SafeRelease(m_ImageNext.aFrameInfo[i].pBitmap.GetAddressOf());
 	}
 
-	/*delete [] m_ImagePrevious.Title;
-	m_ImagePrevious.Title = nullptr;*/
-
-	/*delete [] m_ImageCurrent.Title;
-	m_ImageCurrent.Title = nullptr;*/
-
-	/*delete [] m_ImageNext.Title;
-	m_ImageNext.Title = nullptr;*/
-
 	SafeRelease(m_pBlackBrush.GetAddressOf());
 	SafeRelease(m_pWhiteBrush.GetAddressOf());
 	SafeRelease(m_pContextDst.GetAddressOf());
 	SafeRelease(m_pRenderTarget.GetAddressOf());
+	SafeRelease(_pID3D11Device1.GetAddressOf());
+	SafeRelease(_pID3D11DeviceContext1.GetAddressOf());
+	SafeRelease(_pID2D1Device.GetAddressOf());
+	SafeRelease(_pIDXGISwapChain1.GetAddressOf());
+	SafeRelease(_pID2D1Bitmap1_BackBuffer.GetAddressOf());
 
 	DeviceResourcesDiscarded = true;
 }
@@ -1863,15 +1985,96 @@ void Direct2DRenderer::DiscardDeviceResources()
 //
 //  If the application receives a WM_SIZE message, this method resizes the render target appropriately.
 //
-void Direct2DRenderer::OnResize(UINT width, UINT height)
+HRESULT Direct2DRenderer::OnResize(UINT width, UINT height)
 {
+	HRESULT hr = E_FAIL;
+
     if (m_pRenderTarget)
     {
 		CalculateBitmapTranslatePoint(D2D1::SizeU(width, height));
 
-        // Note: This method can fail, but it's okay to ignore the error here -- it will be repeated on the next call to EndDraw.
-        m_pRenderTarget->Resize(D2D1::SizeU(width, height));
+		Microsoft::WRL::ComPtr<IDXGIDevice1> pIDXGIDevice1;
+
+		hr = _pID3D11Device1.As(&pIDXGIDevice1);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"_pID3D11Device1.As(&pIDXGIDevice)\n");
+
+		// Allocate a descriptor.
+		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+		swapChainDesc.Width = 0U; // use automatic sizing
+		swapChainDesc.Height = 0U;
+		swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
+		swapChainDesc.Stereo = false;
+		swapChainDesc.SampleDesc.Count = 1U; // don't use multi-sampling
+		swapChainDesc.SampleDesc.Quality = 0U;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.BufferCount = 2U; // use double buffering to enable flip
+		swapChainDesc.Scaling = DXGI_SCALING_STRETCH; // CreateSwapChainForHwnd compatible option
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // CreateSwapChainForHwnd compatible option 
+		swapChainDesc.Flags = 0U;
+
+		// Identify the physical adapter (GPU or card) this device is runs on.
+		Microsoft::WRL::ComPtr<IDXGIAdapter> pIDXGIAdapter;
+
+		hr = pIDXGIDevice1->GetAdapter(&pIDXGIAdapter);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIDevice->GetAdapter\n");
+
+		// Get the factory object that created the DXGI device.
+		Microsoft::WRL::ComPtr<IDXGIFactory2> pIDXGIFactory2;
+
+		hr = pIDXGIAdapter->GetParent(IID_PPV_ARGS(&pIDXGIFactory2));
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIAdapter->GetParent\n");
+
+		// Create DXGI swap chain targeting a window handle (the only Windows 7-compatible option)
+		hr = pIDXGIFactory2->CreateSwapChainForHwnd(
+			_pID3D11Device1.Get(),
+			m_hWnd,
+			&swapChainDesc,
+			nullptr,
+			nullptr,
+			&_pIDXGISwapChain1
+			);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIFactory2->CreateSwapChainForHwnd\n");
+
+		// Ensure that DXGI doesn't queue more than one frame at a time.
+		hr = pIDXGIDevice1->SetMaximumFrameLatency(1U);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"pIDXGIDevice->SetMaximumFrameLatency\n");
+
+		// Get the back buffer as an IDXGISurface (Direct2D doesn't accept an ID3D11Texture2D directly as a render target)
+		Microsoft::WRL::ComPtr<IDXGISurface> pIDXGISurface;
+
+		hr = _pIDXGISwapChain1->GetBuffer(0, IID_PPV_ARGS(&pIDXGISurface));
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"_pIDXGISwapChain1->GetBuffer\n");
+
+		// Create a Direct2D surface (bitmap) linked to the Direct3D texture back buffer via the DXGI back buffer
+		D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+			D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+			D2D1::PixelFormat(
+				DXGI_FORMAT_B8G8R8A8_UNORM,
+				D2D1_ALPHA_MODE_IGNORE),
+			m_dpiX,
+			m_dpiY
+			);
+
+		hr = m_pRenderTarget->CreateBitmapFromDxgiSurface(
+			pIDXGISurface.Get(),
+			&bitmapProperties,
+			&_pID2D1Bitmap1_BackBuffer
+			);
+		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"m_pRenderTarget->CreateBitmapFromDxgiSurface\n");
+
+		// Set surface as render target in Direct2D device context
+		m_pRenderTarget->SetTarget(_pID2D1Bitmap1_BackBuffer.Get());
+		OutputDebugStringW(L"m_pRenderTarget->SetTarget\n");
     }
+
+	return hr;
 }
 
 inline HRESULT Direct2DRenderer::GIF_GetFrameMetadata(IWICBitmapFrameDecode *pWICBitmapFrameDecode, FRAME_INFO *FrameInfo)
@@ -2103,7 +2306,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 	IWICImagingFactory2 *pIWICFactory,
 	LPCWSTR FileName,
 	IWICColorContext *pContextDst,
-    ID2D1RenderTarget *pRenderTarget,
+	ID2D1DeviceContext *pRenderTarget,
     IMAGE_INFO *ImageInfo
     )
 {
@@ -2374,9 +2577,9 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
     //SafeRelease(&pDecoder);
 
-	if (ImageInfo->guidContainerFormat == GUID_ContainerFormatGif)
+	if (GUID_ContainerFormatGif == ImageInfo->guidContainerFormat)
 	{
-		for (UINT i = 0U; i < ImageInfo->Frames; i++)
+		for (UINT i = 0U; i < ImageInfo->Frames && SUCCEEDED(hr); i++)
 		{
 			Microsoft::WRL::ComPtr<ID2D1BitmapRenderTarget> m_pFrameComposeRT;
 
@@ -2450,13 +2653,20 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 				{
 					SafeRelease(ImageInfo->aFrameInfo[i].pBitmap.GetAddressOf());
 
-					D2D1_BITMAP_PROPERTIES props;
-
-					m_pFrameComposeRT->GetDpi(&props.dpiX, &props.dpiY);
+					D2D1_BITMAP_PROPERTIES1 props = D2D1::BitmapProperties1();
 
 					props.pixelFormat = m_pFrameComposeRT->GetPixelFormat();
 
-					hr = pRenderTarget->CreateBitmap(RTSize, props, &ImageInfo->aFrameInfo[i].pBitmap);
+					m_pFrameComposeRT->GetDpi(&props.dpiX, &props.dpiY);
+
+					hr = pRenderTarget->CreateBitmap(
+						RTSize,
+						nullptr,
+						// 32 bits per pixel from DXGI_FORMAT_B8G8R8A8_UNORM
+						(BitmapSize.width * 32 + 7) / 8,
+						props,
+						ImageInfo->aFrameInfo[i].pBitmap.GetAddressOf()
+						);
 				}
 
 				if (SUCCEEDED(hr))

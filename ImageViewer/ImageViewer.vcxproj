@@ -90,7 +90,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;D3D11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <EnableDPIAwareness>true</EnableDPIAwareness>
@@ -108,7 +108,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;D3D11.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Manifest>
       <EnableDPIAwareness>true</EnableDPIAwareness>
@@ -130,7 +130,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;D3D11.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Profile>true</Profile>
     </Link>
     <Manifest>
@@ -159,7 +159,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d2d1.lib;Dwrite.lib;windowscodecs.lib;Shlwapi.lib;Mscms.lib;Comctl32.lib;Propsys.lib;Pathcch.lib;D3D11.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <Profile>true</Profile>
     </Link>
     <Manifest>

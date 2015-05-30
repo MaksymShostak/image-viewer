@@ -2951,6 +2951,7 @@ BOOL _OnQueryEndSession(HWND /*hwnd*/)
 
 void _OnSize(HWND /*hWnd*/, UINT /*state*/, int cx, int cy)
 {
+	// Ignore return value
 	renderer.OnResize(cx, cy);
 }
 

@@ -2865,13 +2865,19 @@ void _OnLButtonDblClk(HWND hWnd, BOOL fDoubleClick, int /*x*/, int /*y*/, UINT /
 void _OnLButtonDown(HWND hWnd, BOOL /*fDoubleClick*/, int x, int y, UINT /*keyFlags*/)
 {
 	SetCapture(hWnd);
+
 	if (renderer.Pannable)
 	{
 		SetCursor(hCursorHandClosed);
+
 		RECT rc = {0};
+
 		GetWindowRect(hWnd, &rc);
+
 		ClipCursor(&rc);
+
 		DragStart.x = x;
+
 		DragStart.y = y;
 	}
 }
@@ -2879,10 +2885,13 @@ void _OnLButtonDown(HWND hWnd, BOOL /*fDoubleClick*/, int x, int y, UINT /*keyFl
 void _OnLButtonUp(HWND /*hWnd*/, int /*x*/, int /*y*/, UINT /*keyFlags*/)
 {
 	ReleaseCapture();
+
 	if (renderer.Pannable)
 	{
 		SetCursor(hCursorHand);
-		ClipCursor(NULL);
+
+		ClipCursor(nullptr);
+
 		renderer.SetDragEnd();
 	}
 }
@@ -2893,7 +2902,7 @@ void _OnMouseMove(HWND /*hWnd*/, int x, int y, UINT keyFlags)
 	{
 		if (keyFlags & MK_LBUTTON)
 		{
-			renderer.SetTranslate(x - DragStart.x, y - DragStart.y);
+			(void)renderer.SetTranslate(x - DragStart.x, y - DragStart.y);
 		}
 	}
 }
@@ -2920,11 +2929,11 @@ void _OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT /*fwKeys*/)
 					{
 						if (zDeltaAccumulator > 0)
 						{
-							renderer.ZoomIn((UINT)pt.x, (UINT)pt.y);
+							(void)renderer.ZoomIn((UINT)pt.x, (UINT)pt.y);
 						}
 						else if (zDeltaAccumulator < 0)
 						{
-							renderer.ZoomOut((UINT)pt.x, (UINT)pt.y);
+							(void)renderer.ZoomOut((UINT)pt.x, (UINT)pt.y);
 						}
 
 						SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);

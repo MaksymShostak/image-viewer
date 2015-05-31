@@ -45,7 +45,7 @@ struct GIF_INFO
 
 struct FRAME_INFO
 {
-	Microsoft::WRL::ComPtr<ID2D1Bitmap1> pBitmap;
+	Microsoft::WRL::ComPtr<IWICBitmapSource> pIWICBitmapSource;
 	D2D1_SIZE_F Size;
 	std::wstring Title;
 	unsigned char RotationFlag;
@@ -58,7 +58,7 @@ struct FRAME_INFO
 		m_framePosition(D2D1::RectF(0.0F, 0.0F, 0.0F, 0.0F)),
 		m_uFrameDelay(0U),
 		m_uFrameDisposal(0U),
-		pBitmap(nullptr),
+		pIWICBitmapSource(nullptr),
 		RotationFlag(1U),
 		Size(D2D1::SizeF(0.0F, 0.0F)),
 		Title(),
@@ -130,6 +130,8 @@ private:
 	HRESULT CreateDeviceResources();
     void DiscardDeviceResources();
 
+	HRESULT CreateDeviceSwapChainBitmap();
+
 	inline void CalculateBitmapTranslatePoint(D2D1_SIZE_U RenderTargetSize);
 	HRESULT CalculateDrawRectangle(D2D1_RECT_F &drawRect);
 
@@ -142,7 +144,6 @@ private:
         IWICImagingFactory2 *pIWICFactory,
 		LPCWSTR FileName,
 		IWICColorContext *pContextDst,
-		ID2D1DeviceContext *pRenderTarget,
 		IMAGE_INFO *ImageInfo
         );
 
@@ -197,4 +198,6 @@ private:
 	std::map<GUID, bool> DecoderHasEncoder;
 	UINT m_uLoopNumber;
 	bool AnimationRunning;
+	UINT32 _MaximumBitmapSize;
+	D2D1_SIZE_U _Direct2DRenderTargetSize;
 };

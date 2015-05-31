@@ -343,11 +343,9 @@ HRESULT Direct2DRenderer::OnRender()
 	{
 		if (DeviceResourcesDiscarded)
 		{
-			LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
+			//LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
 			DeviceResourcesDiscarded = false; // only reload once
 		}
-
-		D2D1_SIZE_U m_RenderTargetSize = m_pRenderTarget->GetPixelSize(); // in device pixels
 
 		m_pRenderTarget->BeginDraw();
 		
@@ -378,31 +376,31 @@ HRESULT Direct2DRenderer::OnRender()
 					}				
 				}
 
-				if ((m_RenderTargetSize.width >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (m_RenderTargetSize.height >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is larger than image
+				if ((_Direct2DRenderTargetSize.width >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is larger than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is larger than image\n");
 					m_BitmapSizeFitToWindow = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size;
 					m_zoomMax = 20.0f;
 				}
-				else if ((m_RenderTargetSize.width >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (m_RenderTargetSize.height < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is shorter than image
+				else if ((_Direct2DRenderTargetSize.width >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is shorter than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is shorter than image\n");
-					ScaleFactor = m_RenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+					ScaleFactor = _Direct2DRenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
 					m_zoomMax = 20.0f/ScaleFactor;
 				}
-				else if ((m_RenderTargetSize.width < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (m_RenderTargetSize.height >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is thinner than image
+				else if ((_Direct2DRenderTargetSize.width < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is thinner than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is thinner than image\n");
-					ScaleFactor = m_RenderTargetSize.width/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
+					ScaleFactor = _Direct2DRenderTargetSize.width/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
 					m_zoomMax = 20.0f/ScaleFactor;
 				}
-				else if ((m_RenderTargetSize.width < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (m_RenderTargetSize.height < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is smaller than image
+				else if ((_Direct2DRenderTargetSize.width < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is smaller than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is smaller than image\n");
-					if (((m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width - m_RenderTargetSize.width)/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) < ((m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height - m_RenderTargetSize.height)/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height))
+					if (((m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width - _Direct2DRenderTargetSize.width)/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) < ((m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height - _Direct2DRenderTargetSize.height)/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height))
 					{OutputDebugStringW(L"m_bFitToWindow: height constrained\n");
-						ScaleFactor = m_RenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+						ScaleFactor = _Direct2DRenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
 						m_zoomMax = 20.0f/ScaleFactor;
 					}
 					else
 					{OutputDebugStringW(L"m_bFitToWindow: width constrained\n");
-						ScaleFactor = m_RenderTargetSize.width/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
+						ScaleFactor = _Direct2DRenderTargetSize.width/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
 						m_zoomMax = 20.0f/ScaleFactor;
 					}
 				}
@@ -410,26 +408,26 @@ HRESULT Direct2DRenderer::OnRender()
 				m_BitmapSizeFitToWindow.width = ScaleFactor * m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
 				m_BitmapSizeFitToWindow.height = ScaleFactor * m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
 
-				CalculateBitmapTranslatePoint(m_RenderTargetSize);
+				CalculateBitmapTranslatePoint(_Direct2DRenderTargetSize);
 
 				Pannable = false;
 			}
 			else if (m_ScaleToWindow)
 			{
 				m_TransformMatrixScale = D2D1::Matrix3x2F::Identity();
-				m_zoom = (FLOAT)m_RenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+				m_zoom = (FLOAT)_Direct2DRenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
 				m_zoomMax = 20.0f;
 
-				m_BitmapSizeFitToWindow.width = (FLOAT)m_RenderTargetSize.height * (m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width)/(m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height);
-				m_BitmapSizeFitToWindow.height = (FLOAT)m_RenderTargetSize.height;
+				m_BitmapSizeFitToWindow.width = (FLOAT)_Direct2DRenderTargetSize.height * (m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width)/(m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height);
+				m_BitmapSizeFitToWindow.height = (FLOAT)_Direct2DRenderTargetSize.height;
 
-				CalculateBitmapTranslatePoint(m_RenderTargetSize);
+				CalculateBitmapTranslatePoint(_Direct2DRenderTargetSize);
 
 				Pannable = false;
 			}
 			else // if not fit to window
 			{
-				if ((m_RenderTargetSize.width >= m_zoom*m_BitmapSizeFitToWindow.width) && (m_RenderTargetSize.height >= m_zoom*m_BitmapSizeFitToWindow.height)) // if window larger than image
+				if ((_Direct2DRenderTargetSize.width >= m_zoom*m_BitmapSizeFitToWindow.width) && (_Direct2DRenderTargetSize.height >= m_zoom*m_BitmapSizeFitToWindow.height)) // if window larger than image
 				{
 					Pannable = false;
 				}
@@ -478,11 +476,20 @@ HRESULT Direct2DRenderer::OnRender()
 			//	//spConverter->Release();
 			//}
 
-			if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap) // stops crash in case of NULL pointer to bitmap
+			Microsoft::WRL::ComPtr<ID2D1Bitmap1> pID2D1Bitmap1;
+
+			// Create a Direct2D bitmap from the WIC bitmap.
+			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(
+				m_ImageCurrent.aFrameInfo[m_FrameCurrent].pIWICBitmapSource.Get(),
+				NULL,
+				&pID2D1Bitmap1
+				);
+
+			if (SUCCEEDED(hr))
 			{
 				m_pRenderTarget->DrawBitmap
 				(
-					m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap.Get(),
+					pID2D1Bitmap1.Get(),
 					D2D1::RectF
 					(
 						0.0f,
@@ -527,7 +534,7 @@ HRESULT Direct2DRenderer::OnRender()
 				ErrorDescription,
 				static_cast<UINT>(wcsnlen(ErrorDescription, SHRT_MAX) + 1),
 				m_pTextFormat.Get(),
-				D2D1::RectF(0.0f, 0.0f, (96.0f/m_dpiX)*static_cast<FLOAT>(m_RenderTargetSize.width), (96.0f/m_dpiX)*static_cast<FLOAT>(m_RenderTargetSize.height)),
+				D2D1::RectF(0.0f, 0.0f, (96.0f/m_dpiX)*static_cast<FLOAT>(_Direct2DRenderTargetSize.width), (96.0f/m_dpiX)*static_cast<FLOAT>(_Direct2DRenderTargetSize.height)),
 				BackgroundColorBlack ? m_pWhiteBrush.Get() : m_pBlackBrush.Get()
 				);
 		}
@@ -538,7 +545,7 @@ HRESULT Direct2DRenderer::OnRender()
 		{
 			// Present (new for Direct2D 1.1)
 			DXGI_PRESENT_PARAMETERS parameters = { 0 };
-			parameters.DirtyRectsCount = 0;
+			parameters.DirtyRectsCount = 0U;
 			parameters.pDirtyRects = nullptr;
 			parameters.pScrollRect = nullptr;
 			parameters.pScrollOffset = nullptr;
@@ -546,11 +553,18 @@ HRESULT Direct2DRenderer::OnRender()
 			hr = _pIDXGISwapChain1->Present1(1U, 0U, &parameters);
 		}
 
-        if (D2DERR_RECREATE_TARGET == hr)
-        {
-            hr = S_OK;
-            DiscardDeviceResources();
-        }
+		// If any part of the drawing failed
+		if (FAILED(hr))
+		{
+			// If the reason for the error is not the drawing surface is occluded
+			// e.g. D2DERR_RECREATE_TARGET
+			if (DXGI_STATUS_OCCLUDED != hr)
+			{
+				DiscardDeviceResources();
+			}
+
+			hr = S_OK;
+		}
     }
 
 	if (SUCCEEDED(hr))
@@ -699,7 +713,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageCurrent);
+		LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), m_pContextDst.Get(), &m_ImageCurrent);
 
 		ResetRenderingParameters();
 
@@ -1523,7 +1537,7 @@ HRESULT Direct2DRenderer::RotateByMetadata(IWICImagingFactory2 *pIWICFactory, LP
 
 	if (SUCCEEDED(hr))
 	{OutputDebugStringW(L"pFME->Commit\n");
-		LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageCurrent);
+		LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), &m_ImageCurrent);
 
 		ResetRenderingParameters();
 
@@ -1563,7 +1577,7 @@ unsigned int Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom
 		FileNamePositionNext = 0U;
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionNext].FullPath.c_str(), m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageNext);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionNext].FullPath.c_str(), m_pContextDst.Get(), &m_ImageNext);
 	if (FAILED(hr))
 	{
 		if (hr == HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND))
@@ -1590,7 +1604,7 @@ unsigned int Direct2DRenderer::CacheFileNamePrevious(UINT FileNamePositionToWork
 		FileNamePositionPrevious = static_cast<UINT>(g_Files.size()) - 1U;
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionPrevious].FullPath.c_str(), m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImagePrevious);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionPrevious].FullPath.c_str(), m_pContextDst.Get(), &m_ImagePrevious);
 
 	if (FAILED(hr))
 	{
@@ -1746,10 +1760,205 @@ HRESULT Direct2DRenderer::CreateDeviceIndependentResources()
 
 	if (SUCCEEDED(hr))
     {OutputDebugStringW(L"m_pTextFormat->SetTextAlignment\n");
-        m_pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+        hr = m_pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+	}
+
+	if (SUCCEEDED(hr))
+	{
+		OutputDebugStringW(L"m_pTextFormat->SetParagraphAlignment\n");
+
+		DWORD dwSize = MAX_PATH_UNICODE;
+		WCHAR ICMProfileName[MAX_PATH_UNICODE] = { 0 };
+
+		HDC hDC = GetDC(m_hWnd);
+
+		if (hDC)
+		{
+			OutputDebugStringW(L"GetDC\n");
+			if (GetICMProfileW(hDC, &dwSize, ICMProfileName))
+			{
+				OutputDebugStringW(L"GetICMProfileW\n");
+				hr = m_pWICFactory->CreateColorContext(&m_pContextDst);
+
+				if (SUCCEEDED(hr))
+				{
+					OutputDebugStringW(L"pIWICFactory->CreateColorContext(&pContextDst)\n");
+					hr = m_pContextDst->InitializeFromFilename(ICMProfileName);
+				}
+			}
+		}
+
+		if (1 == ReleaseDC(m_hWnd, hDC))
+		{
+			OutputDebugStringW(L"ReleaseDC\n");
+		}
 	}
 
     return hr;
+}
+
+HRESULT CreateDeviceD3D11(
+	__in D3D_DRIVER_TYPE const type,
+	__inout Microsoft::WRL::ComPtr<ID3D11Device> & pID3D11Device,
+	__inout Microsoft::WRL::ComPtr<ID3D11DeviceContext> & pID3D11DeviceContext,
+	__inout_opt D3D_FEATURE_LEVEL * pD3D_FEATURE_LEVEL = nullptr
+	)
+{
+	// This flag adds support for surfaces with a different color channel ordering than the API default.
+	// You need it for compatibility with Direct2D.
+	UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+
+#ifdef _DEBUG
+	flags |= D3D11_CREATE_DEVICE_DEBUG;
+#endif
+
+	// This array defines the set of DirectX hardware feature levels this app supports.
+	// The ordering is important and you should preserve it.
+	// Don't forget to declare your app's minimum required feature level in its
+	// description. All apps are assumed to support 9.1 unless otherwise stated.
+	D3D_FEATURE_LEVEL supportedD3D_FEATURE_LEVELs[] =
+	{
+		D3D_FEATURE_LEVEL_11_1,
+		D3D_FEATURE_LEVEL_11_0,
+		D3D_FEATURE_LEVEL_10_1,
+		D3D_FEATURE_LEVEL_10_0,
+		D3D_FEATURE_LEVEL_9_3,
+		D3D_FEATURE_LEVEL_9_2,
+		D3D_FEATURE_LEVEL_9_1
+	};
+
+	D3D_FEATURE_LEVEL returnedD3D_FEATURE_LEVEL;
+
+	HRESULT hr = D3D11CreateDevice(
+		nullptr, // use the default adapter
+		type,
+		nullptr, // no software rasterizer
+		flags,
+		supportedD3D_FEATURE_LEVELs, // supported feature levels
+		ARRAYSIZE(supportedD3D_FEATURE_LEVELs),
+		D3D11_SDK_VERSION,
+		pID3D11Device.GetAddressOf(),
+		&returnedD3D_FEATURE_LEVEL, // returns feature level of device created
+		&pID3D11DeviceContext // returns the device immediate context
+		);
+
+	if (SUCCEEDED(hr))
+	{
+		if (pD3D_FEATURE_LEVEL)
+		{
+			*pD3D_FEATURE_LEVEL = returnedD3D_FEATURE_LEVEL;
+		}
+	}
+
+	return hr;
+}
+
+HRESULT Direct2DRenderer::CreateDeviceSwapChainBitmap()
+{
+	Microsoft::WRL::ComPtr<IDXGIDevice1> pIDXGIDevice1;
+
+	HRESULT hr = _pID3D11Device1.As(&pIDXGIDevice1);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"_pID3D11Device1.As(&pIDXGIDevice)\n");
+
+	hr = m_pD2DFactory->CreateDevice(pIDXGIDevice1.Get(), &_pID2D1Device);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"m_pD2DFactory->CreateDevice(pIDXGIDevice.Get(), &_pID2D1Device)\n");
+
+	hr = _pID2D1Device->CreateDeviceContext(
+		D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
+		&m_pRenderTarget);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"_pID2D1Device->CreateDeviceContext\n");
+
+	// Allocate a descriptor.
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
+	swapChainDesc.Width = 0U; // use automatic sizing
+	swapChainDesc.Height = 0U;
+	swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
+	swapChainDesc.Stereo = false;
+	swapChainDesc.SampleDesc.Count = 1U; // don't use multi-sampling
+	swapChainDesc.SampleDesc.Quality = 0U;
+	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount = 2U; // use double buffering to enable flip
+	swapChainDesc.Scaling = DXGI_SCALING_STRETCH; // CreateSwapChainForHwnd compatible option
+	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // CreateSwapChainForHwnd compatible option 
+	swapChainDesc.Flags = 0U;
+
+	// Identify the physical adapter (GPU or card) this device is runs on.
+	Microsoft::WRL::ComPtr<IDXGIAdapter> pIDXGIAdapter;
+
+	hr = pIDXGIDevice1->GetAdapter(&pIDXGIAdapter);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"pIDXGIDevice->GetAdapter\n");
+
+	// Get the factory object that created the DXGI device.
+	Microsoft::WRL::ComPtr<IDXGIFactory2> pIDXGIFactory2;
+
+	hr = pIDXGIAdapter->GetParent(IID_PPV_ARGS(&pIDXGIFactory2));
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"pIDXGIAdapter->GetParent\n");
+
+	// Create DXGI swap chain targeting a window handle (the only Windows 7-compatible option)
+	hr = pIDXGIFactory2->CreateSwapChainForHwnd(
+		_pID3D11Device1.Get(),
+		m_hWnd,
+		&swapChainDesc,
+		nullptr, // assume will always be windowed
+		nullptr,
+		&_pIDXGISwapChain1
+		);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"pIDXGIFactory2->CreateSwapChainForHwnd\n");
+
+	// DXGI will not interfere with application's handling of window mode changes or Alt+Enter
+	hr = pIDXGIFactory2->MakeWindowAssociation(m_hWnd, DXGI_MWA_NO_WINDOW_CHANGES);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"pIDXGIFactory2->MakeWindowAssociation\n");
+
+	// Ensure that DXGI doesn't queue more than one frame at a time.
+	hr = pIDXGIDevice1->SetMaximumFrameLatency(1U);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"pIDXGIDevice->SetMaximumFrameLatency\n");
+
+	// Get the back buffer as an IDXGISurface (Direct2D doesn't accept an ID3D11Texture2D directly as a render target)
+	Microsoft::WRL::ComPtr<IDXGISurface> pIDXGISurface;
+
+	hr = _pIDXGISwapChain1->GetBuffer(0, IID_PPV_ARGS(&pIDXGISurface));
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"_pIDXGISwapChain1->GetBuffer\n");
+
+	hr = m_pD2DFactory->ReloadSystemMetrics();
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"m_pD2DFactory->ReloadSystemMetrics()\n");
+
+	m_pD2DFactory->GetDesktopDpi(&m_dpiX, &m_dpiY);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"m_pD2DFactory->GetDesktopDpi\n");
+
+	// Create a Direct2D surface (bitmap) linked to the Direct3D texture back buffer via the DXGI back buffer
+	D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+		D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+		D2D1::PixelFormat(
+			DXGI_FORMAT_B8G8R8A8_UNORM,
+			D2D1_ALPHA_MODE_IGNORE),
+		m_dpiX,
+		m_dpiY
+		);
+
+	hr = m_pRenderTarget->CreateBitmapFromDxgiSurface(
+		pIDXGISurface.Get(),
+		&bitmapProperties,
+		&_pID2D1Bitmap1_BackBuffer
+		);
+	if (FAILED(hr)) { return hr; }
+	OutputDebugStringW(L"m_pRenderTarget->CreateBitmapFromDxgiSurface\n");
+
+	// Set surface as render target in Direct2D device context
+	m_pRenderTarget->SetTarget(_pID2D1Bitmap1_BackBuffer.Get());
+	OutputDebugStringW(L"m_pRenderTarget->SetTarget\n");
+
+	return hr;
 }
 
 //
@@ -1765,45 +1974,30 @@ HRESULT Direct2DRenderer::CreateDeviceResources()
     if (!m_pRenderTarget)
     {OutputDebugStringW(L"!m_pRenderTarget\n");
 
-		// This flag adds support for surfaces with a different color channel ordering than the API default.
-		// You need it for compatibility with Direct2D.
-		UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-
-		// This array defines the set of DirectX hardware feature levels this app supports.
-		// The ordering is important and you should preserve it.
-		// Don't forget to declare your app's minimum required feature level in its
-		// description. All apps are assumed to support 9.1 unless otherwise stated.
-		D3D_FEATURE_LEVEL featureLevels[] =
-		{
-			D3D_FEATURE_LEVEL_11_1,
-			D3D_FEATURE_LEVEL_11_0,
-			D3D_FEATURE_LEVEL_10_1,
-			D3D_FEATURE_LEVEL_10_0,
-			D3D_FEATURE_LEVEL_9_3,
-			D3D_FEATURE_LEVEL_9_2,
-			D3D_FEATURE_LEVEL_9_1
-		};
-
 		// Create Direct3D device and context
 		Microsoft::WRL::ComPtr<ID3D11Device> pID3D11Device;
 
 		Microsoft::WRL::ComPtr<ID3D11DeviceContext> pID3D11DeviceContext;
 
-		D3D_FEATURE_LEVEL returnedFeatureLevel;
-
-		hr = D3D11CreateDevice(
-			nullptr, // use the default adapter
-			D3D_DRIVER_TYPE_HARDWARE, // hardware acceleration
-			0, // no software rasterizer
-			creationFlags, // supported feature levels
-			featureLevels, // supported feature levels
-			ARRAYSIZE(featureLevels),
-			D3D11_SDK_VERSION, // current SDK version
-			&pID3D11Device, // returns the Direct3D device created
-			&returnedFeatureLevel, // returns feature level of device created
-			&pID3D11DeviceContext // returns the device immediate context
+		// Try to create a hardware-accelerated device
+		hr = CreateDeviceD3D11(
+			D3D_DRIVER_TYPE_HARDWARE,
+			pID3D11Device,
+			pID3D11DeviceContext
 			);
+
+		// If a GPU is unavailable, try to fall back to WARP
+		if (DXGI_ERROR_UNSUPPORTED == hr)
+		{
+			hr = CreateDeviceD3D11(
+				D3D_DRIVER_TYPE_WARP,
+				pID3D11Device,
+				pID3D11DeviceContext
+				);
+		}
+
 		if (FAILED(hr)) { return hr; }
+		OutputDebugStringW(L"CreateDeviceD3D11\n");
 
 		hr = pID3D11Device.As(&_pID3D11Device1);
 		if (FAILED(hr)) { return hr; }
@@ -1813,21 +2007,15 @@ HRESULT Direct2DRenderer::CreateDeviceResources()
 		if (FAILED(hr)) { return hr; }
 		OutputDebugStringW(L"pID3D11DeviceContext.As(&_pID3D11DeviceContext1)\n");
 
-		Microsoft::WRL::ComPtr<IDXGIDevice1> pIDXGIDevice1;
-
-		hr = _pID3D11Device1.As(&pIDXGIDevice1);
+		hr = CreateDeviceSwapChainBitmap();
 		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"_pID3D11Device1.As(&pIDXGIDevice)\n");
+		OutputDebugStringW(L"CreateDeviceSwapChainBitmap()\n");
 
-		hr = m_pD2DFactory->CreateDevice(pIDXGIDevice1.Get(), &_pID2D1Device);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"m_pD2DFactory->CreateDevice(pIDXGIDevice.Get(), &_pID2D1Device)\n");
+		_MaximumBitmapSize = m_pRenderTarget->GetMaximumBitmapSize();
+		OutputDebugStringW(L"m_pRenderTarget->GetMaximumBitmapSize()\n");
 
-		hr = _pID2D1Device->CreateDeviceContext(
-			D2D1_DEVICE_CONTEXT_OPTIONS_NONE,
-			&m_pRenderTarget);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"_pID2D1Device->CreateDeviceContext\n");
+		_Direct2DRenderTargetSize = m_pRenderTarget->GetPixelSize();
+		OutputDebugStringW(L"m_pRenderTarget->GetPixelSize()\n");
 
         // Create a black brush.
         hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::Black), &m_pBlackBrush);
@@ -1838,111 +2026,6 @@ HRESULT Direct2DRenderer::CreateDeviceResources()
         hr = m_pRenderTarget->CreateSolidColorBrush(D2D1::ColorF(D2D1::ColorF::White), &m_pWhiteBrush);
 		if (FAILED(hr)) { return hr; }
 		OutputDebugStringW(L"m_pRenderTarget->CreateSolidColorBrush (White)\n");
-
-		hr = m_pD2DFactory->ReloadSystemMetrics();
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"m_pD2DFactory->ReloadSystemMetrics()\n");
-
-		m_pD2DFactory->GetDesktopDpi(&m_dpiX, &m_dpiY);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"m_pD2DFactory->GetDesktopDpi\n");
-
-		if (SUCCEEDED(hr))
-		{
-			DWORD dwSize = MAX_PATH_UNICODE;
-			WCHAR ICMProfileName[MAX_PATH_UNICODE] = {0};
-
-			HDC hDC = GetDC(m_hWnd);
-			if (hDC)
-			{OutputDebugStringW(L"GetDC\n");
-				if (GetICMProfileW(hDC, &dwSize, ICMProfileName))
-				{OutputDebugStringW(L"GetICMProfileW\n");
-					hr = m_pWICFactory->CreateColorContext(&m_pContextDst);
-					if (SUCCEEDED(hr))
-					{OutputDebugStringW(L"pIWICFactory->CreateColorContext(&pContextDst)\n");
-						hr = m_pContextDst->InitializeFromFilename(ICMProfileName);
-					}
-				}
-			}
-			if (1 == ReleaseDC(m_hWnd, hDC))
-			{
-				OutputDebugStringW(L"ReleaseDC\n");
-			}
-		}
-
-		// Allocate a descriptor.
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
-		swapChainDesc.Width = 0U; // use automatic sizing
-		swapChainDesc.Height = 0U;
-		swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
-		swapChainDesc.Stereo = false;
-		swapChainDesc.SampleDesc.Count = 1U; // don't use multi-sampling
-		swapChainDesc.SampleDesc.Quality = 0U;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.BufferCount = 2U; // use double buffering to enable flip
-		swapChainDesc.Scaling = DXGI_SCALING_STRETCH; // CreateSwapChainForHwnd compatible option
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // CreateSwapChainForHwnd compatible option 
-		swapChainDesc.Flags = 0U;
-
-		// Identify the physical adapter (GPU or card) this device is runs on.
-		Microsoft::WRL::ComPtr<IDXGIAdapter> pIDXGIAdapter;
-
-		hr = pIDXGIDevice1->GetAdapter(&pIDXGIAdapter);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIDevice->GetAdapter\n");
-
-		// Get the factory object that created the DXGI device.
-		Microsoft::WRL::ComPtr<IDXGIFactory2> pIDXGIFactory2;
-
-		hr = pIDXGIAdapter->GetParent(IID_PPV_ARGS(&pIDXGIFactory2));
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIAdapter->GetParent\n");
-
-		// Create DXGI swap chain targeting a window handle (the only Windows 7-compatible option)
-		hr = pIDXGIFactory2->CreateSwapChainForHwnd(
-			_pID3D11Device1.Get(),
-			m_hWnd,
-			&swapChainDesc,
-			nullptr,
-			nullptr,
-			&_pIDXGISwapChain1
-			);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIFactory2->CreateSwapChainForHwnd\n");
-
-		// Ensure that DXGI doesn't queue more than one frame at a time.
-		hr = pIDXGIDevice1->SetMaximumFrameLatency(1U);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIDevice->SetMaximumFrameLatency\n");
-
-		// Get the back buffer as an IDXGISurface (Direct2D doesn't accept an ID3D11Texture2D directly as a render target)
-		Microsoft::WRL::ComPtr<IDXGISurface> pIDXGISurface;
-
-		hr = _pIDXGISwapChain1->GetBuffer(0, IID_PPV_ARGS(&pIDXGISurface));
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"_pIDXGISwapChain1->GetBuffer\n");
-
-		// Create a Direct2D surface (bitmap) linked to the Direct3D texture back buffer via the DXGI back buffer
-		D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
-			D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
-			D2D1::PixelFormat(
-				DXGI_FORMAT_B8G8R8A8_UNORM,
-				D2D1_ALPHA_MODE_IGNORE),
-			m_dpiX,
-			m_dpiY
-			);
-
-		hr = m_pRenderTarget->CreateBitmapFromDxgiSurface(
-			pIDXGISurface.Get(),
-			&bitmapProperties,
-			&_pID2D1Bitmap1_BackBuffer
-			);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"m_pRenderTarget->CreateBitmapFromDxgiSurface\n");
-
-		// Set surface as render target in Direct2D device context
-		m_pRenderTarget->SetTarget(_pID2D1Bitmap1_BackBuffer.Get());
-		OutputDebugStringW(L"m_pRenderTarget->SetTarget\n");
     }
 
     return hr;
@@ -1954,24 +2037,9 @@ HRESULT Direct2DRenderer::CreateDeviceResources()
 //
 void Direct2DRenderer::DiscardDeviceResources()
 {
-	for (UINT i = 0U; i < m_ImagePrevious.Frames; i++)
-	{
-		SafeRelease(m_ImagePrevious.aFrameInfo[i].pBitmap.GetAddressOf());
-	}
-
-	for (UINT i = 0U; i < m_ImageCurrent.Frames; i++)
-	{
-		SafeRelease(m_ImageCurrent.aFrameInfo[i].pBitmap.GetAddressOf());
-	}
-
-	for (UINT i = 0U; i < m_ImageNext.Frames; i++)
-	{
-		SafeRelease(m_ImageNext.aFrameInfo[i].pBitmap.GetAddressOf());
-	}
-
 	SafeRelease(m_pBlackBrush.GetAddressOf());
 	SafeRelease(m_pWhiteBrush.GetAddressOf());
-	SafeRelease(m_pContextDst.GetAddressOf());
+	//SafeRelease(m_pContextDst.GetAddressOf());
 	SafeRelease(m_pRenderTarget.GetAddressOf());
 	SafeRelease(_pID3D11Device1.GetAddressOf());
 	SafeRelease(_pID3D11DeviceContext1.GetAddressOf());
@@ -1993,85 +2061,23 @@ HRESULT Direct2DRenderer::OnResize(UINT width, UINT height)
     {
 		CalculateBitmapTranslatePoint(D2D1::SizeU(width, height));
 
-		Microsoft::WRL::ComPtr<IDXGIDevice1> pIDXGIDevice1;
+		m_pRenderTarget->SetTarget(nullptr);
 
-		hr = _pID3D11Device1.As(&pIDXGIDevice1);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"_pID3D11Device1.As(&pIDXGIDevice)\n");
-
-		// Allocate a descriptor.
-		DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
-		swapChainDesc.Width = 0U; // use automatic sizing
-		swapChainDesc.Height = 0U;
-		swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // this is the most common swapchain format
-		swapChainDesc.Stereo = false;
-		swapChainDesc.SampleDesc.Count = 1U; // don't use multi-sampling
-		swapChainDesc.SampleDesc.Quality = 0U;
-		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-		swapChainDesc.BufferCount = 2U; // use double buffering to enable flip
-		swapChainDesc.Scaling = DXGI_SCALING_STRETCH; // CreateSwapChainForHwnd compatible option
-		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD; // CreateSwapChainForHwnd compatible option 
-		swapChainDesc.Flags = 0U;
-
-		// Identify the physical adapter (GPU or card) this device is runs on.
-		Microsoft::WRL::ComPtr<IDXGIAdapter> pIDXGIAdapter;
-
-		hr = pIDXGIDevice1->GetAdapter(&pIDXGIAdapter);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIDevice->GetAdapter\n");
-
-		// Get the factory object that created the DXGI device.
-		Microsoft::WRL::ComPtr<IDXGIFactory2> pIDXGIFactory2;
-
-		hr = pIDXGIAdapter->GetParent(IID_PPV_ARGS(&pIDXGIFactory2));
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIAdapter->GetParent\n");
-
-		// Create DXGI swap chain targeting a window handle (the only Windows 7-compatible option)
-		hr = pIDXGIFactory2->CreateSwapChainForHwnd(
-			_pID3D11Device1.Get(),
-			m_hWnd,
-			&swapChainDesc,
-			nullptr,
-			nullptr,
-			&_pIDXGISwapChain1
-			);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIFactory2->CreateSwapChainForHwnd\n");
-
-		// Ensure that DXGI doesn't queue more than one frame at a time.
-		hr = pIDXGIDevice1->SetMaximumFrameLatency(1U);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"pIDXGIDevice->SetMaximumFrameLatency\n");
-
-		// Get the back buffer as an IDXGISurface (Direct2D doesn't accept an ID3D11Texture2D directly as a render target)
-		Microsoft::WRL::ComPtr<IDXGISurface> pIDXGISurface;
-
-		hr = _pIDXGISwapChain1->GetBuffer(0, IID_PPV_ARGS(&pIDXGISurface));
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"_pIDXGISwapChain1->GetBuffer\n");
-
-		// Create a Direct2D surface (bitmap) linked to the Direct3D texture back buffer via the DXGI back buffer
-		D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
-			D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
-			D2D1::PixelFormat(
-				DXGI_FORMAT_B8G8R8A8_UNORM,
-				D2D1_ALPHA_MODE_IGNORE),
-			m_dpiX,
-			m_dpiY
+		hr = _pIDXGISwapChain1->ResizeBuffers(
+			0U,
+			0U, 0U,
+			DXGI_FORMAT_UNKNOWN,
+			0U
 			);
 
-		hr = m_pRenderTarget->CreateBitmapFromDxgiSurface(
-			pIDXGISurface.Get(),
-			&bitmapProperties,
-			&_pID2D1Bitmap1_BackBuffer
-			);
-		if (FAILED(hr)) { return hr; }
-		OutputDebugStringW(L"m_pRenderTarget->CreateBitmapFromDxgiSurface\n");
-
-		// Set surface as render target in Direct2D device context
-		m_pRenderTarget->SetTarget(_pID2D1Bitmap1_BackBuffer.Get());
-		OutputDebugStringW(L"m_pRenderTarget->SetTarget\n");
+		if (SUCCEEDED(hr))
+		{
+			CreateDeviceSwapChainBitmap();
+		}
+		else
+		{
+			DiscardDeviceResources();
+		}
     }
 
 	return hr;
@@ -2306,7 +2312,6 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 	IWICImagingFactory2 *pIWICFactory,
 	LPCWSTR FileName,
 	IWICColorContext *pContextDst,
-	ID2D1DeviceContext *pRenderTarget,
     IMAGE_INFO *ImageInfo
     )
 {
@@ -2366,23 +2371,17 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 		for (UINT i = 0U; i < ImageInfo->Frames; i++)
 		{WCHAR buffer[260] = {0}; StringCchPrintfW(buffer, 260, L"Frame: %d\n", i); OutputDebugStringW(buffer);
 			
-		Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> pSource;
-			//IWICBitmap *pBitmap = nullptr;
-			//IWICBitmapFlipRotator *pFlipRotator = nullptr;
-			UINT colorContextCount = 0U;
+			Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> pSource;
 
 			hr = pDecoder->GetFrame(i, &pSource);
 
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"pDecoder->GetFrame(i, &pSource)\n");
-				UINT width = 0U;
-				UINT height = 0U;
+				UINT width, height = 0U;
 
 				if (SUCCEEDED(pSource->GetSize(&width, &height)))
 				{
-					UINT MaximumBitmapSize = pRenderTarget->GetMaximumBitmapSize();
-
-					if (width > MaximumBitmapSize || height > MaximumBitmapSize)
+					if (width > _MaximumBitmapSize || height > _MaximumBitmapSize)
 					{
 						hr = D2DERR_MAX_TEXTURE_SIZE_EXCEEDED;
 					}
@@ -2391,7 +2390,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"Checked size\n");
-				if (ImageInfo->guidContainerFormat == GUID_ContainerFormatGif)
+				if (GUID_ContainerFormatGif == ImageInfo->guidContainerFormat)
 				{
 					hr = GIF_GetFrameMetadata(pSource.Get(), &(ImageInfo->aFrameInfo[i]));
 					ImageInfo->aFrameInfo[i].RotationFlag = 1U; // Not located in metadata
@@ -2404,17 +2403,23 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 			Microsoft::WRL::ComPtr<IWICColorTransform> pColorTransform;
 
+			UINT colorContextCount = 0U;
+
 			// Transform colours
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"GetMetadata(pSource, ImageInfo->aFrameInfo[i])\n");
-				hr = pSource->GetColorContexts(0U, NULL, &colorContextCount);
-				if (FAILED(hr) || colorContextCount == 0U)
+				hr = pSource->GetColorContexts(0U, nullptr, &colorContextCount);
+				if (FAILED(hr) || 0U == colorContextCount)
 				{OutputDebugStringW(L"pSource->GetColorContexts(0U, NULL, &colorContextCount) FAILED or returned 0\n");
 					colorContextCount = 1U;
 					hr = S_OK;
 				}
 
-				IWICColorContext **contexts = new IWICColorContext*[colorContextCount];
+				std::vector<Microsoft::WRL::ComPtr<IWICColorContext>> contexts;
+
+				contexts.resize(colorContextCount);
+
+				//IWICColorContext **contexts = new IWICColorContext*[colorContextCount];
 				for (UINT j = 0U; j < colorContextCount; j++)
 				{
 					if (SUCCEEDED(hr))
@@ -2425,17 +2430,15 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 				if (SUCCEEDED(hr))
 				{OutputDebugStringW(L"pIWICFactory->CreateColorContext(&contexts[i])\n");
-					hr = pSource->GetColorContexts(colorContextCount, contexts, &colorContextCount);
-					if (FAILED(hr) || colorContextCount == 0U)
+					hr = pSource->GetColorContexts(colorContextCount, contexts.data()->GetAddressOf(), &colorContextCount);
+					if (FAILED(hr) || 0U == colorContextCount)
 					{OutputDebugStringW(L"pSource->GetColorContexts(colorContextCount, contexts, &colorContextCount) FAILED or returned 0\n");
-						colorContextCount = 1U;
+						// A sRGB color space
+						hr = contexts[0]->InitializeFromExifColorSpace(1U);
 
-						WCHAR sRGBProfileName[MAX_PATH_UNICODE] = {0};
-						DWORD dwSize = MAX_PATH_UNICODE;
-
-						if (GetStandardColorSpaceProfileW(NULL, LCS_sRGB, sRGBProfileName, &dwSize))
-						{OutputDebugStringW(L"GetStandardColorSpaceProfileW(NULL, LCS_sRGB, sRGBProfileName, &dwSize)\n");
-							hr = contexts[0]->InitializeFromFilename(sRGBProfileName);
+						if (SUCCEEDED(hr))
+						{
+							colorContextCount = 1U;
 						}
 					}
 				}
@@ -2451,7 +2454,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 						{OutputDebugStringW(L"m_pWICFactory->CreateColorTransformer\n");
 							for (UINT j = 0U; j < colorContextCount; j++)
 							{
-								hr = pColorTransform->Initialize(pSource.Get(), contexts[j], pContextDst, PixelFormat);
+								hr = pColorTransform->Initialize(pSource.Get(), contexts[j].Get(), pContextDst, PixelFormat);
 								if (SUCCEEDED(hr))
 								{OutputDebugStringW(L"pColorTransform->Initialize(pSource, contexts[i], pContextDst, PixelFormat)\n");
 									break;
@@ -2461,11 +2464,11 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 					}
 				}
 
-				for (UINT j = 0U; j < colorContextCount; j++)
+				/*for (UINT j = 0U; j < colorContextCount; j++)
 				{
 					SafeRelease(&contexts[j]);
 				}
-				delete[] contexts;
+				delete[] contexts;*/
 
 				if (FAILED(hr))
 				{OutputDebugStringW(L"pColorTransform->Initialize(pSource, contexts[i], pContextDst, PixelFormat) FAILED\n");
@@ -2527,20 +2530,20 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 			//	}
 			//}
 
-			Microsoft::WRL::ComPtr<IWICFormatConverter> pConverter;
+			Microsoft::WRL::ComPtr<IWICFormatConverter> pIWICFormatConverter;
 
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"Handled rotation\n");
 				// Convert the image format to 32bppPBGRA
 				// (DXGI_FORMAT_B8G8R8A8_UNORM + D2D1_ALPHA_MODE_PREMULTIPLIED).
-				hr = pIWICFactory->CreateFormatConverter(&pConverter);
+				hr = pIWICFactory->CreateFormatConverter(&pIWICFormatConverter);
 			}
 
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"CreateFormatConverter\n");
-				hr = pConverter->Initialize(
+				hr = pIWICFormatConverter->Initialize(
 						//ImageInfo->aFrameInfo[i].RotationFlag != 1 ? (IWICBitmapSource*)pFlipRotator : ((colorContextCount == 0U) ? (IWICBitmapSource*)pSource : (IWICBitmapSource*)pColorTransform),
-						(colorContextCount == 0U) ? static_cast<IWICBitmapSource*>(pSource.Get()) : static_cast<IWICBitmapSource*>(pColorTransform.Get()),
+						(0U == colorContextCount) ? static_cast<IWICBitmapSource*>(pSource.Get()) : static_cast<IWICBitmapSource*>(pColorTransform.Get()),
 						GUID_WICPixelFormat32bppPBGRA,
 						WICBitmapDitherTypeNone,
 						NULL,
@@ -2549,129 +2552,162 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 						);
 			}
 			
+
+			Microsoft::WRL::ComPtr<IWICBitmapSource> pIWICBitmapSource;
+
+			hr = pIWICFormatConverter.As(&pIWICBitmapSource);
+
 			if (SUCCEEDED(hr))
-			{OutputDebugStringW(L"pConverter->Initialize\n");
-				// Create a Direct2D bitmap from the WIC bitmap.
-				hr = pRenderTarget->CreateBitmapFromWicBitmap(
-					pConverter.Get(),
-					NULL,
-					&(ImageInfo->aFrameInfo[i].pBitmap)
-					);
+			{
+				ImageInfo->aFrameInfo[i].pIWICBitmapSource.Swap(pIWICBitmapSource);
 			}
+
+			OutputDebugStringW(L"pConverter->Initialize\n");
 
 			if (SUCCEEDED(hr))
 			{
 				if (ImageInfo->guidContainerFormat != GUID_ContainerFormatGif)
 				{
-					ImageInfo->aFrameInfo[i].Size = ImageInfo->aFrameInfo[i].pBitmap->GetSize();
+					UINT uiWidth, uiHeight = 0U;
+
+					hr = ImageInfo->aFrameInfo[i].pIWICBitmapSource->GetSize(&uiWidth, &uiHeight);
+
+					if (SUCCEEDED(hr))
+					{
+						ImageInfo->aFrameInfo[i].Size.width = static_cast<FLOAT>(uiWidth);
+						ImageInfo->aFrameInfo[i].Size.height = static_cast<FLOAT>(uiHeight);
+					}
 				}
 			}
-
-			//SafeRelease(&pSource);
-			//SafeRelease(&pColorTransform);
-			//SafeRelease(&pConverter);
-			//SafeRelease(&pBitmap);
-			//SafeRelease(&pFlipRotator);
 		}
 	}
-
-    //SafeRelease(&pDecoder);
 
 	if (GUID_ContainerFormatGif == ImageInfo->guidContainerFormat)
 	{
 		for (UINT i = 0U; i < ImageInfo->Frames && SUCCEEDED(hr); i++)
 		{
-			Microsoft::WRL::ComPtr<ID2D1BitmapRenderTarget> m_pFrameComposeRT;
+			Microsoft::WRL::ComPtr<IWICBitmap> pIWICBitmap;
 
-			hr = pRenderTarget->CreateCompatibleRenderTarget(
-				// Composed frames have the same sizes as the global gif image size
-				D2D1::SizeF(
-					static_cast<FLOAT>(ImageInfo->GifInfo.Size.width),
-					static_cast<FLOAT>(ImageInfo->GifInfo.Size.height)
-					),
-				&m_pFrameComposeRT
+			hr = m_pWICFactory->CreateBitmap(
+				ImageInfo->GifInfo.Size.width,
+				ImageInfo->GifInfo.Size.height,
+				GUID_WICPixelFormat32bppPBGRA,
+				WICBitmapCacheOnDemand,
+				&pIWICBitmap
 				);
 
 			if (SUCCEEDED(hr))
 			{
-				// Start producing the bitmap
-				m_pFrameComposeRT->BeginDraw();
+				Microsoft::WRL::ComPtr<ID2D1RenderTarget> pID2D1RenderTarget;
 
-				// If first frame
-				if (0U == i)
+				D2D1_RENDER_TARGET_PROPERTIES renderTargetProperties = D2D1::RenderTargetProperties();
+				renderTargetProperties.type = D2D1_RENDER_TARGET_TYPE_DEFAULT;
+				renderTargetProperties.pixelFormat = D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED);
+				renderTargetProperties.dpiX = m_dpiX;
+				renderTargetProperties.dpiY = m_dpiY;
+				renderTargetProperties.usage = D2D1_RENDER_TARGET_USAGE_NONE;
+				renderTargetProperties.minLevel = D2D1_FEATURE_LEVEL_DEFAULT;
+
+				hr = m_pD2DFactory->CreateWicBitmapRenderTarget(
+					pIWICBitmap.Get(),
+					renderTargetProperties,
+					&pID2D1RenderTarget
+					);
+
+				if (SUCCEEDED(hr))
 				{
-					// Draw background
-					m_pFrameComposeRT->Clear(ImageInfo->GifInfo.BackgroundColor);
-				}
-				else
-				{
-					switch (ImageInfo->aFrameInfo[i - 1U].m_uFrameDisposal)
+					// Start producing the bitmap
+					pID2D1RenderTarget->BeginDraw();
+
+					// If first frame
+					if (0U == i)
 					{
-					case DM_UNDEFINED:
-					case DM_NONE:
+						// Draw background
+						pID2D1RenderTarget->Clear(ImageInfo->GifInfo.BackgroundColor);
+					}
+					else
+					{
+						switch (ImageInfo->aFrameInfo[i - 1U].m_uFrameDisposal)
 						{
-							// We simply draw on the previous frames
-							m_pFrameComposeRT->DrawBitmap(ImageInfo->aFrameInfo[i - 1U].pBitmap.Get(), NULL);
-						}
-						break;
-					case DM_BACKGROUND: // Clear the area covered by the current raw frame with background color
+						case DM_UNDEFINED:
+						case DM_NONE:
 						{
-								// Clip the render target to the size of the raw frame
-								m_pFrameComposeRT->PushAxisAlignedClip(&ImageInfo->aFrameInfo[i - 1U].m_framePosition, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
-						
-								m_pFrameComposeRT->Clear(ImageInfo->GifInfo.BackgroundColor);
+							Microsoft::WRL::ComPtr<ID2D1Bitmap> pID2D1Bitmap;
 
-								// Remove the clipping
-								m_pFrameComposeRT->PopAxisAlignedClip();
+							// Create a Direct2D bitmap from the WIC bitmap.
+							hr = pID2D1RenderTarget->CreateBitmapFromWicBitmap(
+								ImageInfo->aFrameInfo[i - 1U].pIWICBitmapSource.Get(),
+								NULL,
+								&pID2D1Bitmap
+								);
+
+							if (SUCCEEDED(hr))
+							{
+								// We simply draw on the previous frames
+								pID2D1RenderTarget->DrawBitmap(pID2D1Bitmap.Get(), NULL);
+							}
 						}
 						break;
-					case DM_PREVIOUS:
+						case DM_BACKGROUND: // Clear the area covered by the current raw frame with background color
+						{
+							// Clip the render target to the size of the raw frame
+							pID2D1RenderTarget->PushAxisAlignedClip(&ImageInfo->aFrameInfo[i - 1U].m_framePosition, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+
+							pID2D1RenderTarget->Clear(ImageInfo->GifInfo.BackgroundColor);
+
+							// Remove the clipping
+							pID2D1RenderTarget->PopAxisAlignedClip();
+						}
+						break;
+						case DM_PREVIOUS:
 						{
 							// We restore the previous composed frame first
 							if (i >= 2)
 							{
-								m_pFrameComposeRT->DrawBitmap(ImageInfo->aFrameInfo[i - 2U].pBitmap.Get(), NULL);
+								Microsoft::WRL::ComPtr<ID2D1Bitmap> pID2D1Bitmap;
+
+								// Create a Direct2D bitmap from the WIC bitmap.
+								hr = pID2D1RenderTarget->CreateBitmapFromWicBitmap(
+									ImageInfo->aFrameInfo[i - 2U].pIWICBitmapSource.Get(),
+									NULL,
+									&pID2D1Bitmap
+									);
+
+								if (SUCCEEDED(hr))
+								{
+									pID2D1RenderTarget->DrawBitmap(pID2D1Bitmap.Get(), NULL);
+								}
 							}
 						}
 						break;
+						}
 					}
-				}
 
-				// Produce the frame
-				m_pFrameComposeRT->DrawBitmap(ImageInfo->aFrameInfo[i].pBitmap.Get(), ImageInfo->aFrameInfo[i].m_framePosition);
+					Microsoft::WRL::ComPtr<ID2D1Bitmap> pID2D1Bitmap;
 
-				hr = m_pFrameComposeRT->EndDraw();
-			}
-
-			if (SUCCEEDED(hr))
-			{
-				D2D1_SIZE_U BitmapSize = ImageInfo->aFrameInfo[i].pBitmap->GetPixelSize();
-
-				D2D1_SIZE_U RTSize = m_pFrameComposeRT->GetPixelSize();
-
-				if (BitmapSize.width != RTSize.width || BitmapSize.height != RTSize.height)
-				{
-					SafeRelease(ImageInfo->aFrameInfo[i].pBitmap.GetAddressOf());
-
-					D2D1_BITMAP_PROPERTIES1 props = D2D1::BitmapProperties1();
-
-					props.pixelFormat = m_pFrameComposeRT->GetPixelFormat();
-
-					m_pFrameComposeRT->GetDpi(&props.dpiX, &props.dpiY);
-
-					hr = pRenderTarget->CreateBitmap(
-						RTSize,
-						nullptr,
-						// 32 bits per pixel from DXGI_FORMAT_B8G8R8A8_UNORM
-						(BitmapSize.width * 32 + 7) / 8,
-						props,
-						ImageInfo->aFrameInfo[i].pBitmap.GetAddressOf()
+					// Create a Direct2D bitmap from the WIC bitmap.
+					hr = pID2D1RenderTarget->CreateBitmapFromWicBitmap(
+						ImageInfo->aFrameInfo[i].pIWICBitmapSource.Get(),
+						NULL,
+						&pID2D1Bitmap
 						);
-				}
 
-				if (SUCCEEDED(hr))
-				{
-					hr = ImageInfo->aFrameInfo[i].pBitmap->CopyFromRenderTarget(NULL, m_pFrameComposeRT.Get(), NULL);
+					// Produce the frame
+					pID2D1RenderTarget->DrawBitmap(pID2D1Bitmap.Get(), ImageInfo->aFrameInfo[i].m_framePosition);
+
+					hr = pID2D1RenderTarget->EndDraw();
+
+					if (SUCCEEDED(hr))
+					{
+						Microsoft::WRL::ComPtr<IWICBitmapSource> pIWICBitmapSource;
+
+						hr = pIWICBitmap.As(&pIWICBitmapSource);
+
+						if (SUCCEEDED(hr))
+						{
+							ImageInfo->aFrameInfo[i].pIWICBitmapSource.Swap(pIWICBitmapSource);
+						}
+					}
 				}
 			}
 		}
@@ -2684,7 +2720,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 HRESULT Direct2DRenderer::SetHwnd(HWND hWnd)
 {
-	if (hWnd == nullptr)
+	if (nullptr == hWnd)
 	{
 		return E_POINTER;
 	}
@@ -2721,17 +2757,15 @@ HRESULT Direct2DRenderer::ZoomIn(UINT x, UINT y)
 
 	D2D1_POINT_2F m_ZoomCentre = D2D1::Point2F();
 
-	D2D1_SIZE_U WindowSize = m_pRenderTarget->GetPixelSize();
-
-	if ((WindowSize.width >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.width) && (WindowSize.height >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.height)) // if at next higher zoom window larger than image
+	if ((_Direct2DRenderTargetSize.width >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.width) && (_Direct2DRenderTargetSize.height >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.height)) // if at next higher zoom window larger than image
 	{
 		m_ZoomCentre = D2D1::Point2F(m_BitmapSizeFitToWindow.width/2.0f, m_BitmapSizeFitToWindow.height/2.0f);
 	}
-	else if ((WindowSize.width < m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.width) && (WindowSize.height >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.height)) // if at next higher zoom window thinner than image
+	else if ((_Direct2DRenderTargetSize.width < m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.width) && (_Direct2DRenderTargetSize.height >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.height)) // if at next higher zoom window thinner than image
 	{
 		m_ZoomCentre = D2D1::Point2F((FLOAT)x - m_BitmapTranslatePoint.x - m_TranslatePoint.x, m_BitmapSizeFitToWindow.height/2.0f);
 	}
-	else if ((WindowSize.width >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.width) && (WindowSize.height < m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.height)) // if at next higher zoom window shorter than image
+	else if ((_Direct2DRenderTargetSize.width >= m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.width) && (_Direct2DRenderTargetSize.height < m_zoomFactor*m_zoom*m_BitmapSizeFitToWindow.height)) // if at next higher zoom window shorter than image
 	{
 		m_ZoomCentre = D2D1::Point2F(m_BitmapSizeFitToWindow.width/2.0f, (FLOAT)y - m_BitmapTranslatePoint.y - m_TranslatePoint.y);
 	}
@@ -2773,9 +2807,7 @@ HRESULT Direct2DRenderer::ZoomOut(UINT x, UINT y)
 		m_FitToWindow = false;
 		m_ScaleToWindow = false;
 
-		D2D1_SIZE_U WindowSize = m_pRenderTarget->GetPixelSize();
-
-		if ((WindowSize.width >= m_zoom*m_BitmapSizeFitToWindow.width) && (WindowSize.height >= m_zoom*m_BitmapSizeFitToWindow.height)) // if window larger than image
+		if ((_Direct2DRenderTargetSize.width >= m_zoom*m_BitmapSizeFitToWindow.width) && (_Direct2DRenderTargetSize.height >= m_zoom*m_BitmapSizeFitToWindow.height)) // if window larger than image
 		{OutputDebugStringW(L"window larger than image\n");
 			m_ZoomCentre = D2D1::Point2F(m_BitmapSizeFitToWindow.width/2.0f, m_BitmapSizeFitToWindow.height/2.0f);
 			m_ZoomCentre.x *= (96.0f/m_dpiX);
@@ -2850,10 +2882,9 @@ HRESULT Direct2DRenderer::ScaleToWindow()
 
 HRESULT Direct2DRenderer::SetTranslate(int x, int y)
 {
-	D2D1_SIZE_U WindowSize = m_pRenderTarget->GetPixelSize();
-
-	if ((WindowSize.width >= m_zoom*m_BitmapSizeFitToWindow.width) && (WindowSize.height >= m_zoom*m_BitmapSizeFitToWindow.height)) // if window larger than image
-	{OutputDebugStringW(L"SetTranslate: window larger than image\n");
+	if ((_Direct2DRenderTargetSize.width >= m_zoom*m_BitmapSizeFitToWindow.width) && (_Direct2DRenderTargetSize.height >= m_zoom*m_BitmapSizeFitToWindow.height)) // if window larger than image
+	{
+		OutputDebugStringW(L"SetTranslate: window larger than image\n");
 		return S_OK;
 	}
 
@@ -2888,27 +2919,27 @@ HRESULT Direct2DRenderer::SetTranslate(int x, int y)
 	//}
 	//else if ((WindowSize.width < m_zoom*m_BitmapSizeFitToWindow.width) && (WindowSize.height < m_zoom*m_BitmapSizeFitToWindow.height)) // if window smaller than image
 	{OutputDebugStringW(L"SetTranslate: window smaller than image\n");
-		m_TranslatePoint.x = m_TranslatePointEnd.x + (96.0f/m_dpiX)*(FLOAT)x;
+	m_TranslatePoint.x = m_TranslatePointEnd.x + (96.0f / m_dpiX)*(FLOAT)x;
 
-		/*if (m_TranslatePoint.x > m_zoom*m_BitmapSizeFitToWindow.width/2.0f)
-		{
-			m_TranslatePoint.x = m_zoom*m_BitmapSizeFitToWindow.width/2.0f;
-		}
-		else if (m_TranslatePoint.x < -m_zoom*m_BitmapSizeFitToWindow.width/2.0f)
-		{
-			m_TranslatePoint.x = -m_zoom*m_BitmapSizeFitToWindow.width/2.0f;
-		}*/
+	/*if (m_TranslatePoint.x > m_zoom*m_BitmapSizeFitToWindow.width/2.0f)
+	{
+		m_TranslatePoint.x = m_zoom*m_BitmapSizeFitToWindow.width/2.0f;
+	}
+	else if (m_TranslatePoint.x < -m_zoom*m_BitmapSizeFitToWindow.width/2.0f)
+	{
+		m_TranslatePoint.x = -m_zoom*m_BitmapSizeFitToWindow.width/2.0f;
+	}*/
 
-		m_TranslatePoint.y = m_TranslatePointEnd.y + (96.0f/m_dpiY)*(FLOAT)y;
+	m_TranslatePoint.y = m_TranslatePointEnd.y + (96.0f / m_dpiY)*(FLOAT)y;
 
-		/*if (m_TranslatePoint.y > m_zoom*m_BitmapSizeFitToWindow.height/2.0f)
-		{
-			m_TranslatePoint.y = m_zoom*m_BitmapSizeFitToWindow.height/2.0f;
-		}
-		else if (m_TranslatePoint.y < -m_zoom*m_BitmapSizeFitToWindow.height/2.0f)
-		{
-			m_TranslatePoint.y = -m_zoom*m_BitmapSizeFitToWindow.height/2.0f;
-		}*/
+	/*if (m_TranslatePoint.y > m_zoom*m_BitmapSizeFitToWindow.height/2.0f)
+	{
+		m_TranslatePoint.y = m_zoom*m_BitmapSizeFitToWindow.height/2.0f;
+	}
+	else if (m_TranslatePoint.y < -m_zoom*m_BitmapSizeFitToWindow.height/2.0f)
+	{
+		m_TranslatePoint.y = -m_zoom*m_BitmapSizeFitToWindow.height/2.0f;
+	}*/
 	}
 	
 	return OnRender();
@@ -2967,7 +2998,7 @@ HRESULT Direct2DRenderer::LoadBitmapCurrent(LPCWSTR FileName)
 
 	if (SUCCEEDED(hr))
 	{
-		LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), m_pRenderTarget.Get(), &m_ImageCurrent);
+		LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), &m_ImageCurrent);
 
 		ResetRenderingParameters();
 	}
@@ -2986,28 +3017,28 @@ HRESULT Direct2DRenderer::LoadBitmapCurrent(LPCWSTR FileName)
 	{
 		if (SUCCEEDED(hr))
 		{
-			hThreadCacheFileNameNext = (HANDLE)_beginthreadex( // NATIVE CODE
+			hThreadCacheFileNameNext = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 				NULL, // void *security,
 				sizeof(LPVOID), // unsigned stack_size,
 				StaticCacheFileNameNext, // unsigned ( __stdcall *start_address )( void * ),
 				this, // void *arglist,
 				0U, // unsigned initflag,
 				NULL // unsigned *thrdaddr
-				);
+				));
 
 			hr = hThreadCacheFileNameNext ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 		}
 
 		if (SUCCEEDED(hr))
 		{
-			hThreadCacheFileNamePrevious = (HANDLE)_beginthreadex( // NATIVE CODE
+			hThreadCacheFileNamePrevious = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 				NULL, // void *security,
 				sizeof(LPVOID), // unsigned stack_size,
 				StaticCacheFileNamePrevious, // unsigned ( __stdcall *start_address )( void * ),
 				this, // void *arglist,
 				0U, // unsigned initflag,
 				NULL // unsigned *thrdaddr
-				);
+				));
 
 			hr = hThreadCacheFileNamePrevious ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 		}
@@ -3056,37 +3087,29 @@ HRESULT Direct2DRenderer::OnDelete()
 	WaitForSingleObject(hThreadCacheFileNameNext, INFINITE);
 	WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
 
-	if (g_FileNamePosition != 0U)
+	if (0U != g_FileNamePosition)
 	{
 		FileNamePositionPrevious = g_FileNamePosition - 1U;
 	}
 	else
 	{
-		FileNamePositionPrevious = ((UINT)g_Files.size()) - 1U;
+		FileNamePositionPrevious = (static_cast<UINT>(g_Files.size())) - 1U;
 	}
 
 	g_FileNamePosition = FileNamePositionNext;
-
-	//delete [] m_ImagePrevious.Title;
-	//m_ImagePrevious.Title = nullptr;
-
-	for (UINT i = 0U; i < m_ImageCurrent.Frames; i++)
-	{
-		SafeRelease(m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap.GetAddressOf());
-	}
 
 	m_ImageCurrent = m_ImageNext;
 
 	ResetRenderingParameters();
 
-	hThreadCacheFileNameNext = (HANDLE)_beginthreadex( // NATIVE CODE
+	hThreadCacheFileNameNext = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 		NULL, // void *security,
 		sizeof(LPVOID), // unsigned stack_size,
 		StaticCacheFileNameNext, // unsigned ( __stdcall *start_address )( void * ),
 		this, // void *arglist,
 		0U, // unsigned initflag,
 		NULL // unsigned *thrdaddr
-		);
+		));
 
 	if (hThreadCacheFileNameNext)
 	{
@@ -3112,7 +3135,7 @@ HRESULT Direct2DRenderer::OnDelete()
 
 HRESULT Direct2DRenderer::OnFrameNext()
 {
-	if (m_ImageCurrent.Frames == 1U || AnimationRunning)
+	if (1U == m_ImageCurrent.Frames || AnimationRunning)
 	{
 		return S_OK;
 	}

@@ -108,7 +108,7 @@ int NumberOfDigits(T number)
 
 // partial specialization optimization for 32-bit numbers
 template<>
-int NumberOfDigits(int32_t x)
+inline int NumberOfDigits(int32_t x)
 {
 	if (x == INT_MIN) return 10 + 1;
 	if (x < 0) return NumberOfDigits(-x) + 1;
@@ -141,7 +141,7 @@ int NumberOfDigits(int32_t x)
 
 // partial-specialization optimization for 8-bit numbers
 template <>
-int NumberOfDigits(char n)
+inline int NumberOfDigits(char n)
 {
 	// if you have the time, replace this with a static initialization to avoid
 	// the initial overhead & unnecessary branch

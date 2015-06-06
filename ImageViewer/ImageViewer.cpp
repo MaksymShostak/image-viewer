@@ -228,11 +228,11 @@ HRESULT RenameFileWithIFO(__in std::wstring * FileName, __in std::wstring * File
 	renamefilewithifo.FileNameNew = FileNameNew;
 
 	HANDLE hThreadRenameFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-			NULL, // void *security,
-			sizeof(RENAMEFILEWITHIFO), // unsigned stack_size,
-			&RenameFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
-			&renamefilewithifo, // void *arglist,
-			0U, // unsigned initflag,
+			NULL, // void *security
+			sizeof(RENAMEFILEWITHIFO), // unsigned stack_size
+			&RenameFileWithIFO, // unsigned ( __stdcall *start_address )( void * )
+			&renamefilewithifo, // void *arglist
+			0U, // unsigned initflag
 			NULL // unsigned *thrdaddr
 			));
 
@@ -294,11 +294,11 @@ HRESULT DeleteFileWithIFO(__in HWND hWnd, __in std::wstring * FileName, __in boo
 	deletefilewithifo.Silent = Silent;
 
 	HANDLE hThreadDeleteFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-			NULL, // void *security,
-			sizeof(DELETEFILEWITHIFO), // unsigned stack_size,
-			&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
-			&deletefilewithifo, // void *arglist,
-			0U, // unsigned initflag,
+			NULL, // void *security
+			sizeof(DELETEFILEWITHIFO), // unsigned stack_size
+			&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * )
+			&deletefilewithifo, // void *arglist
+			0U, // unsigned initflag
 			NULL // unsigned *thrdaddr
 			));
 
@@ -455,11 +455,11 @@ HRESULT CommonItemDialogOpen(__in std::wstring * pszTitle, __in COMDLG_FILTERSPE
 	commonitemdialogopen.FileName = FileName;
 
 	HANDLE hThreadCommonItemDialogOpen = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-			NULL, // void *security,
-			sizeof(COMMONITEMDIALOGOPEN), // unsigned stack_size,
-			&CommonItemDialogOpen, // unsigned ( __stdcall *start_address )( void * ),
-			&commonitemdialogopen, // void *arglist,
-			0U, // unsigned initflag,
+			NULL, // void *security
+			sizeof(COMMONITEMDIALOGOPEN), // unsigned stack_size
+			&CommonItemDialogOpen, // unsigned ( __stdcall *start_address )( void * )
+			&commonitemdialogopen, // void *arglist
+			0U, // unsigned initflag
 			NULL // unsigned *thrdaddr
 			));
 
@@ -1320,10 +1320,10 @@ HRESULT CreateRightClickMenu(HMENU *hMenu)
 			}
 
 			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_OPENFILELOCATION, L"Open file location");
-			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_SEPARATOR, NULL, NULL);
-			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_AUTOROTATE, L"Auto rotate");
-			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_ROTATECLOCKWISE, L"Rotate clockwise");
-			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_ROTATECOUNTERCLOCKWISE, L"Rotate counterclockwise");
+			//InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_SEPARATOR, NULL, NULL);
+			//InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_AUTOROTATE, L"Auto rotate");
+			//InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_ROTATECLOCKWISE, L"Rotate clockwise");
+			//InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_ROTATECOUNTERCLOCKWISE, L"Rotate counterclockwise");
 			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_SEPARATOR, NULL, NULL);
 			InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_COPY, L"Copy");
 			//InsertMenuW(*hMenu, (UINT)-1, MF_BYPOSITION | MF_STRING, ID_FILE_CUT, L"Cut*");
@@ -1479,11 +1479,11 @@ HRESULT SetAsDesktopBackground(__in std::wstring * FileName, __in DWORD dwStyle)
 	SETASDESKTOPBACKGROUND setasdesktopbackground = {FileName->c_str(), dwStyle};
 
 	HANDLE hThreadSetAsDesktopBackground = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-			NULL, // void *security,
-			sizeof(SETASDESKTOPBACKGROUND), // unsigned stack_size,
-			&SetAsDesktopBackground, // unsigned ( __stdcall *start_address )( void * ),
-			&setasdesktopbackground, // void *arglist,
-			0U, // unsigned initflag,
+			NULL, // void *security
+			sizeof(SETASDESKTOPBACKGROUND), // unsigned stack_size
+			&SetAsDesktopBackground, // unsigned ( __stdcall *start_address )( void * )
+			&setasdesktopbackground, // void *arglist
+			0U, // unsigned initflag
 			NULL // unsigned *thrdaddr
 			));
 
@@ -2150,11 +2150,11 @@ void _OnCommand_ID_FILE_DELETE(HWND hWnd)
 		g_deletefilewithifo.Silent = false;
 
 		HANDLE hThreadDeleteFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-				NULL, // void *security,
-				sizeof(DELETEFILEWITHIFO), // unsigned stack_size,
-				&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
-				&g_deletefilewithifo, // void *arglist,
-				0U, // unsigned initflag,
+				NULL, // void *security
+				sizeof(DELETEFILEWITHIFO), // unsigned stack_size
+				&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * )
+				&g_deletefilewithifo, // void *arglist
+				0U, // unsigned initflag
 				NULL // unsigned *thrdaddr
 				));
 
@@ -2177,11 +2177,11 @@ void _OnCommand_ID_FILE_DELETEPERMANENTLY(HWND hWnd)
 		g_deletefilewithifo.Silent = false;
 
 		HANDLE hThreadDeleteFileWithIFO = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-				NULL, // void *security,
-				sizeof(DELETEFILEWITHIFO), // unsigned stack_size,
-				&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * ),
-				&g_deletefilewithifo, // void *arglist,
-				0U, // unsigned initflag,
+				NULL, // void *security
+				sizeof(DELETEFILEWITHIFO), // unsigned stack_size
+				&DeleteFileWithIFO, // unsigned ( __stdcall *start_address )( void * )
+				&g_deletefilewithifo, // void *arglist
+				0U, // unsigned initflag
 				NULL // unsigned *thrdaddr
 				));
 
@@ -2339,9 +2339,9 @@ void _OnCommand_ID_FILE_NEW(HWND hWnd)
 					ShellExecuteW(
 						hWnd, // __in_opt  HWND hwnd
 						L"open", // __in_opt LPCTSTR lpOperation
-						g_Files[FileNamePositionTemp].FullPath.c_str(), // __in LPCTSTR lpFile,
-						NULL, // __in_opt LPCTSTR lpParameters,
-						NULL, // __in_opt LPCTSTR lpDirectory,
+						g_Files[FileNamePositionTemp].FullPath.c_str(), // __in LPCTSTR lpFile
+						NULL, // __in_opt LPCTSTR lpParameters
+						NULL, // __in_opt LPCTSTR lpDirectory
 						SW_MAXIMIZE // __in INT nShowCmd
 						);
 					break;
@@ -2384,11 +2384,11 @@ void _OnCommand_ID_FILE_OPEN(HWND hWnd)
 		g_commonitemdialogopen.FileName = &g_FileName;
 
 		HANDLE hThreadCommonItemDialogOpen = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-				NULL, // void *security,
-				sizeof(COMMONITEMDIALOGOPEN), // unsigned stack_size,
-				&CommonItemDialogOpen, // unsigned ( __stdcall *start_address )( void * ),
-				&g_commonitemdialogopen, // void *arglist,
-				0U, // unsigned initflag,
+				NULL, // void *security
+				sizeof(COMMONITEMDIALOGOPEN), // unsigned stack_size
+				&CommonItemDialogOpen, // unsigned ( __stdcall *start_address )( void * )
+				&g_commonitemdialogopen, // void *arglist
+				0U, // unsigned initflag
 				NULL // unsigned *thrdaddr
 				));
 
@@ -2402,14 +2402,19 @@ void _OnCommand_ID_FILE_OPEN(HWND hWnd)
 void _OnCommand_ID_FILE_OPENFILELOCATION(HWND /*hWnd*/)
 {
 	ITEMIDLIST __unaligned *pidl = ILCreateFromPathW(g_Files[g_FileNamePosition].FullPath.c_str());
+
 	if (pidl)
-	{// CoInitialize or CoInitializeEx must be called before using SHOpenFolderAndSelectItems. Not doing so causes SHOpenFolderAndSelectItems to fail.
+	{
+		// CoInitialize or CoInitializeEx must be called before using SHOpenFolderAndSelectItems. Not doing so causes SHOpenFolderAndSelectItems to fail.
 		HRESULT hr = SHOpenFolderAndSelectItems(pidl, 0U, NULL, NULL);
+
 		if (FAILED(hr))
 		{
 			ErrorDescription(hr);
 		}
-		CoTaskMemFree(pidl); // When using Windows 2000 or later, use CoTaskMemFree rather than ILFree. ITEMIDLIST structures are always allocated with the Component Object Model (COM) task allocator on those platforms.
+
+		// When using Windows 2000 or later, use CoTaskMemFree rather than ILFree. ITEMIDLIST structures are always allocated with the Component Object Model (COM) task allocator on those platforms.
+		CoTaskMemFree(pidl);
 	}
 }
 
@@ -2622,6 +2627,7 @@ void _OnCommand_ID_HELP_ABOUT(HWND hWnd)
 	config.pszWindowTitle		= L"About";
 	
 	HRESULT hr = TaskDialogIndirect(&config, NULL, NULL, NULL);
+
 	if (FAILED(hr))
 	{
 		ErrorDescription(hr);
@@ -2647,11 +2653,11 @@ void _OnCommand_RETURNEDFROMCOMMONITEMDIALOGOPEN(HWND hWnd)
 		FILENAMEVECTORFROMDIRECTORY FileNameVectorFromDirectory = {&g_Files, &FileDirectory, ArrayOfFileExtensions, NumberOfFileExtensions};
 		
 		hThreadCreateFileNameVectorFromDirectory = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-			NULL, // void *security,
-			sizeof(FILENAMEVECTORFROMDIRECTORY), // unsigned stack_size,
-			&CreateFileNameVectorFromDirectory, // unsigned ( __stdcall *start_address )( void * ),
-			&FileNameVectorFromDirectory, // void *arglist,
-			0U, // unsigned initflag,
+			NULL, // void *security
+			sizeof(FILENAMEVECTORFROMDIRECTORY), // unsigned stack_size
+			&CreateFileNameVectorFromDirectory, // unsigned ( __stdcall *start_address )( void * )
+			&FileNameVectorFromDirectory, // void *arglist
+			0U, // unsigned initflag
 			NULL // unsigned *thrdaddr
 			));
 
@@ -2699,7 +2705,7 @@ void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 	{
 		SetForegroundWindow(hWnd);
 
-		MENUITEMINFO miiRotate = {0};
+		/*MENUITEMINFO miiRotate = {0};
 		miiRotate.cbSize = sizeof(MENUITEMINFO);
 		miiRotate.fMask = MIIM_STATE;
 
@@ -2708,8 +2714,7 @@ void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 
 		miiRotate.fState = renderer.RotateEnabled() ? MF_ENABLED : MF_GRAYED;
 		SetMenuItemInfoW(hRightClickMenu, ID_FILE_ROTATECLOCKWISE, FALSE, &miiRotate);
-		SetMenuItemInfoW(hRightClickMenu, ID_FILE_ROTATECOUNTERCLOCKWISE, FALSE, &miiRotate);
-
+		SetMenuItemInfoW(hRightClickMenu, ID_FILE_ROTATECOUNTERCLOCKWISE, FALSE, &miiRotate);*/
 
 		MENUITEMINFO miiSortBy = {0};
 		miiSortBy.cbSize = sizeof(MENUITEMINFO);
@@ -2728,7 +2733,7 @@ void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 		// user types SHIFT+F10 — then the x- and y-coordinates are -1 and the
 		// application should display the context menu at the location of the
 		// current selection rather than at (xPos, yPos).
-		if (xPos == USHRT_MAX && yPos == USHRT_MAX)
+		if (USHRT_MAX == xPos && USHRT_MAX == yPos)
 		{
 			POINT pt = {0};
 
@@ -2757,6 +2762,7 @@ void _OnContextMenu(HWND hWnd, HWND /*hWndContext*/, UINT xPos, UINT yPos)
 BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 {
 	HRESULT hr = S_OK;
+
 	// if FileName not initialised from command-line argument, get user to select file
 	if ((0 == wcscmp(g_FileName.c_str(), L"\0")))
 	{
@@ -2785,11 +2791,11 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 			FILENAMEVECTORFROMDIRECTORY FileNameVectorFromDirectory = {&g_Files, &FileDirectory, ArrayOfFileExtensions, NumberOfFileExtensions};
 		
 			hThreadCreateFileNameVectorFromDirectory = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
-				NULL, // void *security,
-				sizeof(FILENAMEVECTORFROMDIRECTORY), // unsigned stack_size,
-				&CreateFileNameVectorFromDirectory, // unsigned ( __stdcall *start_address )( void * ),
-				&FileNameVectorFromDirectory, // void *arglist,
-				0U, // unsigned initflag,
+				NULL, // void *security
+				sizeof(FILENAMEVECTORFROMDIRECTORY), // unsigned stack_size
+				&CreateFileNameVectorFromDirectory, // unsigned ( __stdcall *start_address )( void * )
+				&FileNameVectorFromDirectory, // void *arglist
+				0U, // unsigned initflag
 				NULL // unsigned *thrdaddr
 				));
 
@@ -2884,13 +2890,13 @@ void _OnLButtonDown(HWND hWnd, BOOL /*fDoubleClick*/, int x, int y, UINT /*keyFl
 
 void _OnLButtonUp(HWND /*hWnd*/, int /*x*/, int /*y*/, UINT /*keyFlags*/)
 {
-	ReleaseCapture();
+	(void)ReleaseCapture();
 
 	if (renderer.Pannable)
 	{
-		SetCursor(hCursorHand);
+		(void)SetCursor(hCursorHand);
 
-		ClipCursor(nullptr);
+		(void)ClipCursor(nullptr);
 
 		renderer.SetDragEnd();
 	}
@@ -2949,7 +2955,7 @@ void _OnPaint(HWND hWnd)
 {
 	if (SUCCEEDED(renderer.OnRender()))
 	{
-		ValidateRect(hWnd, NULL);
+		(void)ValidateRect(hWnd, NULL);
 	}
 }
 
@@ -2960,8 +2966,7 @@ BOOL _OnQueryEndSession(HWND /*hwnd*/)
 
 void _OnSize(HWND /*hWnd*/, UINT /*state*/, int cx, int cy)
 {
-	// Ignore return value
-	renderer.OnResize(cx, cy);
+	(void)renderer.OnResize(cx, cy);
 }
 
 /*void _OnShowWindow(HWND hWnd, BOOL fShow, UINT status)
@@ -2988,12 +2993,46 @@ HRESULT CALLBACK TaskDialogCallbackProc(
   __in  LONG_PTR /*dwRefData*/
 )
 {
+	HRESULT hr = E_FAIL;
+
 	if (TDN_HYPERLINK_CLICKED == uNotification)
 	{
-		ShellExecuteW(hWnd, L"open", reinterpret_cast<LPCWSTR>(lParam), NULL, NULL, SW_SHOWNORMAL);
+
+#pragma warning(push)
+#pragma warning(disable:4302)
+#pragma warning(disable:4311)
+		
+		int returnValue = reinterpret_cast<int>(
+			//https://msdn.microsoft.com/en-us/library/windows/desktop/bb762153
+			ShellExecuteW(
+				hWnd,
+				L"open",
+				reinterpret_cast<LPCWSTR>(lParam),
+				NULL,
+				NULL,
+				SW_SHOWNORMAL
+				)
+			);
+
+#pragma warning(pop)
+
+		if (returnValue > 32)
+		{
+			return S_OK;
+		}
+		else
+		{
+			switch (returnValue)
+			{
+			case 0:
+				hr = E_OUTOFMEMORY;
+			default:
+				hr = HRESULT_FROM_WIN32(returnValue);
+			}
+		}
 	}
 
-	return S_OK;
+	return hr;
 }
 
 //
@@ -3050,8 +3089,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (reinterpret_cast<HMENU>(lParam) == hRightClickMenuTitleBar)
 			{
-				// Ignore return value
-				ShellExecuteW(hWnd, L"explore", g_Directories[(UINT)wParam].c_str(), NULL, NULL, SW_SHOWNORMAL);
+				(void)ShellExecuteW(
+					hWnd,
+					L"explore",
+					g_Directories[(UINT)wParam].c_str(),
+					NULL,
+					NULL,
+					SW_SHOWNORMAL
+					);
+
 				return 0;
 			}
 
@@ -3068,12 +3114,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 				if (SUCCEEDED(hr))
 				{
-					// Ignore return value
-					SetForegroundWindow(hWnd);
+					(void)SetForegroundWindow(hWnd);
 
 					if (!TrackPopupMenu(hRightClickMenuTitleBar, (0 == GetSystemMetrics(SM_MENUDROPALIGNMENT) ? TPM_LEFTALIGN : TPM_RIGHTALIGN) | TPM_TOPALIGN, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), 0, hWnd, NULL))
 					{
-						if (GetLastError() != ERROR_POPUP_ALREADY_ACTIVE)
+						if (ERROR_POPUP_ALREADY_ACTIVE != GetLastError())
 						{
 							ErrorDescription(HRESULT_FROM_WIN32(GetLastError()));
 						}
@@ -3089,9 +3134,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_SETCURSOR:
 		{
-			if (LOWORD(lParam) == HTCLIENT)
+			if (HTCLIENT == LOWORD(lParam))
 			{
-				SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+				(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
 
 				return TRUE;
 			}
@@ -3102,7 +3147,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 	case WM_SYSCOMMAND:
 		{
-			if ((0xFFF0 & SC_SCREENSAVE) == wParam) // To obtain the correct result when testing the value of wParam, an application must combine the value 0xFFF0 with the wParam value by using the bitwise AND operator.
+			// To obtain the correct result when testing the value of wParam, an application must combine the value 0xFFF0 with the wParam value by using the bitwise AND operator.
+			if ((0xFFF0 & SC_SCREENSAVE) == wParam)
 			{
 				// Trap screensaver to prevent from launching
 				return 0;
@@ -3150,7 +3196,7 @@ BOOL CALLBACK EnumWindowsProc(__in HWND hWnd, __in LPARAM lParam)
 		{
 			if (0 == wcscmp(buffer, szWindowClass))
 			{
-				PostMessageW(hWnd, WM_CLOSE, NULL, NULL);
+				(void)PostMessageW(hWnd, WM_CLOSE, NULL, NULL);
 			}
 		}
 		return TRUE;

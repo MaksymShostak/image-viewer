@@ -246,12 +246,12 @@ void RTrim(LPWSTR String, UINT StringMaxLength, const UINT NumberOfCharsToTrim)
 	}
 }
 
-unsigned WINAPI StaticCacheFileNameNext(void* Param)
+unsigned int WINAPI StaticCacheFileNameNext(void* Param)
 {
 	return (reinterpret_cast<Direct2DRenderer*>(Param))->CacheFileNameNext(g_FileNamePosition);
 }
 
-unsigned WINAPI StaticCacheFileNamePrevious(void* Param)
+unsigned int WINAPI StaticCacheFileNamePrevious(void* Param)
 {
 	return (reinterpret_cast<Direct2DRenderer*>(Param))->CacheFileNamePrevious(g_FileNamePosition);
 }
@@ -300,17 +300,17 @@ Direct2DRenderer::Direct2DRenderer() :
 	CloseHandle(hThreadCacheFileNamePrevious);
 	CloseHandle(hThreadCacheFileNameNext);
 
-	for (UINT i = 0U; i < m_ImagePrevious.Frames; i++)
+	for (UINT i = 0U; i < m_ImagePrevious.aFrameInfo.size(); i++)
 	{
 		SafeRelease(m_ImagePrevious.aFrameInfo[i].pBitmap.GetAddressOf());
 	}
 
-	for (UINT i = 0U; i < m_ImageCurrent.Frames; i++)
+	for (UINT i = 0U; i < m_ImageCurrent.aFrameInfo.size(); i++)
 	{
 		SafeRelease(m_ImageCurrent.aFrameInfo[i].pBitmap.GetAddressOf());
 	}
 
-	for (UINT i = 0U; i < m_ImageNext.Frames; i++)
+	for (UINT i = 0U; i < m_ImageNext.aFrameInfo.size(); i++)
 	{
 		SafeRelease(m_ImageNext.aFrameInfo[i].pBitmap.GetAddressOf());
 	}
@@ -345,7 +345,22 @@ HRESULT Direct2DRenderer::OnRender()
 		if (DeviceResourcesDiscarded)
 		{
 			//LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
+			m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1 = nullptr;
 			DeviceResourcesDiscarded = false; // only reload once
+		}
+
+		// If the device bitmap has not yet been created
+		if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1.Get())
+		{
+			// Create a Direct2D bitmap from the WIC bitmap
+			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(
+				m_ImageCurrent.aFrameInfo[m_FrameCurrent].pIWICBitmapSource.Get(),
+				NULL,
+				&m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1
+				);
+			if (FAILED(hr)) { return hr; }
+
+			//m_ImageCurrent.aFrameInfo[m_FrameCurrent].pIWICBitmapSource = nullptr;
 		}
 
 		m_pRenderTarget->BeginDraw();
@@ -363,7 +378,7 @@ HRESULT Direct2DRenderer::OnRender()
 				m_TranslatePoint = D2D1::Point2F(0.0f, 0.0f);
 				m_TranslatePointEnd = D2D1::Point2F(0.0f, 0.0f);
 
-				if (m_ImageCurrent.guidContainerFormat == GUID_ContainerFormatGif && m_ImageCurrent.Frames > 1U) // CLUDGE, fix with proper function for FitToWindowSize (use CalculateDrawRectangle for motivation)
+				if (m_ImageCurrent.guidContainerFormat == GUID_ContainerFormatGif && m_ImageCurrent.aFrameInfo.size() > 1U) // CLUDGE, fix with proper function for FitToWindowSize (use CalculateDrawRectangle for motivation)
 				{
 					if (ConformGIF)
 					{
@@ -477,31 +492,19 @@ HRESULT Direct2DRenderer::OnRender()
 			//	//spConverter->Release();
 			//}
 
-			Microsoft::WRL::ComPtr<ID2D1Bitmap1> pID2D1Bitmap1;
-
-			// Create a Direct2D bitmap from the WIC bitmap.
-			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(
-				m_ImageCurrent.aFrameInfo[m_FrameCurrent].pIWICBitmapSource.Get(),
-				NULL,
-				&pID2D1Bitmap1
-				);
-
-			if (SUCCEEDED(hr))
-			{
-				m_pRenderTarget->DrawBitmap
+			m_pRenderTarget->DrawBitmap
+			(
+				m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1.Get(),
+				D2D1::RectF
 				(
-					pID2D1Bitmap1.Get(),
-					D2D1::RectF
-					(
-						0.0f,
-						0.0f,
-						(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.width,
-						(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.height
-					),
-					1.0F,
-					D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC
-				);
-			}
+					0.0f,
+					0.0f,
+					(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.width,
+					(96.0f/m_dpiX)*m_BitmapSizeFitToWindow.height
+				),
+				1.0F,
+				D2D1_INTERPOLATION_MODE_HIGH_QUALITY_CUBIC
+			);
 			
 			/*ID2D1SolidColorBrush *m_pBlueBrush = nullptr;
 
@@ -572,7 +575,7 @@ HRESULT Direct2DRenderer::OnRender()
 	{
 		if (GUID_ContainerFormatGif == m_ImageCurrent.guidContainerFormat)
 		{
-			if (m_ImageCurrent.Frames > 1U && 0U == m_uLoopNumber && 0U == m_FrameCurrent)
+			if (m_ImageCurrent.aFrameInfo.size() > 1U && 0U == m_uLoopNumber && 0U == m_FrameCurrent)
 			{
 				if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
 				{
@@ -630,12 +633,12 @@ bool Direct2DRenderer::RotateEnabled()
 
 HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 {
-	WCHAR FileNameUnicode[MAX_PATH_UNICODE] = L"\\\\?\\";
-	WCHAR FileNameTemporary[MAX_PATH_UNICODE] = {0};
+	WCHAR FileNameUnicode[PATHCCH_MAX_CCH] = L"\\\\?\\";
+	WCHAR FileNameTemporary[PATHCCH_MAX_CCH] = {0};
 	WIN32_FILE_ATTRIBUTE_DATA FileAttributeDataOriginal = {0};
 	HANDLE HandleNew = nullptr;
 
-	HRESULT hr = StringCchCatW(FileNameUnicode, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
+	HRESULT hr = StringCchCatW(FileNameUnicode, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
 
 	if (SUCCEEDED(hr))
 	{
@@ -644,12 +647,12 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 	
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCopyW(FileNameTemporary, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
+		hr = StringCchCopyW(FileNameTemporary, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCatW(FileNameTemporary, MAX_PATH_UNICODE, L"temp");
+		hr = StringCchCatW(FileNameTemporary, PATHCCH_MAX_CCH, L"temp");
 	}
 
 	if (SUCCEEDED(hr))
@@ -663,7 +666,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 			hr = RotateByReencode(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), FileNameTemporary, Clockwise);
 			if (FAILED(hr) && hr != WINCODEC_ERR_ABORTED) // delete the temporary file we created in case the above function fails
 			{
-				if (SUCCEEDED(StringCchCatW(FileNameUnicode, MAX_PATH_UNICODE, L"temp")))
+				if (SUCCEEDED(StringCchCatW(FileNameUnicode, PATHCCH_MAX_CCH, L"temp")))
 				{
 					DeleteFileW(FileNameUnicode); // ignore return value as temp file may not have been created yet when error arose
 				}
@@ -678,17 +681,17 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCopyW(FileNameTemporary, MAX_PATH_UNICODE, L"\\\\?\\");
+		hr = StringCchCopyW(FileNameTemporary, PATHCCH_MAX_CCH, L"\\\\?\\");
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCatW(FileNameTemporary, MAX_PATH_UNICODE, g_Files[g_FileNamePosition].FullPath.c_str());
+		hr = StringCchCatW(FileNameTemporary, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCatW(FileNameTemporary, MAX_PATH_UNICODE, L"temp");
+		hr = StringCchCatW(FileNameTemporary, PATHCCH_MAX_CCH, L"temp");
 	}
 
 	if (SUCCEEDED(hr))
@@ -837,7 +840,7 @@ HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory2 *pIWICFactory, LP
 	}
 
 	//Process each frame of the image.
-	for (UINT i = 0U; i < m_ImageCurrent.Frames && SUCCEEDED(hr); i++)
+	for (UINT i = 0U; i < m_ImageCurrent.aFrameInfo.size() && SUCCEEDED(hr); i++)
 	{
 		//Frame variables.
 		Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> piFrameDecode;
@@ -1567,24 +1570,24 @@ HRESULT Direct2DRenderer::ActualSize()
 	return OnRender();
 }
 
-unsigned int Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom)
+unsigned int Direct2DRenderer::CacheFileNameNext(size_t FileNamePositionToWorkFrom)
 {
-	if ((FileNamePositionToWorkFrom + 1U) < (UINT)g_Files.size())
+	if ((FileNamePositionToWorkFrom + 1U) < g_Files.size())
 	{
-		FileNamePositionNext = FileNamePositionToWorkFrom + 1U;
+		g_FileNamePositionNext = FileNamePositionToWorkFrom + 1U;
 	}
 	else
 	{
-		FileNamePositionNext = 0U;
+		g_FileNamePositionNext = 0U;
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionNext].FullPath.c_str(), m_pContextDst.Get(), &m_ImageNext);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePositionNext].FullPath.c_str(), m_pContextDst.Get(), &m_ImageNext);
 
 	if (FAILED(hr))
 	{
 		if (HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr)
 		{
-			return CacheFileNameNext(((FileNamePositionToWorkFrom + 1U) < (UINT)g_Files.size()) ? FileNamePositionToWorkFrom + 1U : 0U);
+			return CacheFileNameNext(((FileNamePositionToWorkFrom + 1U) < g_Files.size()) ? FileNamePositionToWorkFrom + 1U : 0U);
 		}
 		else
 		{
@@ -1595,24 +1598,24 @@ unsigned int Direct2DRenderer::CacheFileNameNext(UINT FileNamePositionToWorkFrom
 	return hr;
 }
 
-unsigned int Direct2DRenderer::CacheFileNamePrevious(UINT FileNamePositionToWorkFrom)
+unsigned int Direct2DRenderer::CacheFileNamePrevious(size_t FileNamePositionToWorkFrom)
 {
 	if (0U != FileNamePositionToWorkFrom)
 	{
-		FileNamePositionPrevious = FileNamePositionToWorkFrom - 1U;
+		g_FileNamePositionPrevious = FileNamePositionToWorkFrom - 1U;
 	}
 	else
 	{
-		FileNamePositionPrevious = static_cast<UINT>(g_Files.size()) - 1U;
+		g_FileNamePositionPrevious = g_Files.size() - 1U;
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[FileNamePositionPrevious].FullPath.c_str(), m_pContextDst.Get(), &m_ImagePrevious);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePositionPrevious].FullPath.c_str(), m_pContextDst.Get(), &m_ImagePrevious);
 
 	if (FAILED(hr))
 	{
 		if (HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr)
 		{
-			return CacheFileNamePrevious((0U != FileNamePositionToWorkFrom)? FileNamePositionToWorkFrom - 1U : static_cast<UINT>(g_Files.size()) - 1U);
+			return CacheFileNamePrevious((0U != FileNamePositionToWorkFrom)? FileNamePositionToWorkFrom - 1U : g_Files.size() - 1U);
 		}
 		else
 		{
@@ -1769,8 +1772,8 @@ HRESULT Direct2DRenderer::CreateDeviceIndependentResources()
 	{
 		OutputDebugStringW(L"m_pTextFormat->SetParagraphAlignment\n");
 
-		DWORD dwSize = MAX_PATH_UNICODE;
-		WCHAR ICMProfileName[MAX_PATH_UNICODE] = { 0 };
+		DWORD dwSize = PATHCCH_MAX_CCH;
+		WCHAR ICMProfileName[PATHCCH_MAX_CCH] = { 0 };
 
 		HDC hDC = GetDC(m_hWnd);
 
@@ -2057,30 +2060,35 @@ void Direct2DRenderer::DiscardDeviceResources()
 //
 HRESULT Direct2DRenderer::OnResize(UINT width, UINT height)
 {
-	HRESULT hr = E_FAIL;
+	HRESULT hr = DXGI_ERROR_INVALID_CALL;
 
-    if (m_pRenderTarget)
-    {
+	// If the size of the render target has actually changed
+	if (_Direct2DRenderTargetSize.width != width && _Direct2DRenderTargetSize.height != height)
+	{
 		CalculateBitmapTranslatePoint(D2D1::SizeU(width, height));
 
-		m_pRenderTarget->SetTarget(nullptr);
-
-		hr = _pIDXGISwapChain1->ResizeBuffers(
-			0U,
-			0U, 0U,
-			DXGI_FORMAT_UNKNOWN,
-			0U
-			);
-
-		if (SUCCEEDED(hr))
+		// Can get here while resources are being re-created, so make sure you have valid pointers
+		if (m_pRenderTarget.Get())
 		{
-			CreateDeviceSwapChainBitmap();
+			m_pRenderTarget->SetTarget(nullptr);
+
+			hr = _pIDXGISwapChain1->ResizeBuffers(
+				0U,
+				0U, 0U,
+				DXGI_FORMAT_UNKNOWN,
+				0U
+				);
+
+			if (SUCCEEDED(hr))
+			{
+				hr = CreateDeviceSwapChainBitmap();
+			}
+			else
+			{
+				DiscardDeviceResources();
+			}
 		}
-		else
-		{
-			DiscardDeviceResources();
-		}
-    }
+	}
 
 	return hr;
 }
@@ -2365,14 +2373,16 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 			);
 	}
 
+	UINT NumberOfFrames = 0U;
+
 	if (SUCCEEDED(hr))
     {OutputDebugStringW(L"pIWICFactory->CreateDecoderFromFilename\n");
-        hr = pDecoder->GetFrameCount(&(ImageInfo->Frames));
+        hr = pDecoder->GetFrameCount(&NumberOfFrames);
     }
 
 	if (SUCCEEDED(hr))
     {
-		ImageInfo->aFrameInfo.resize(ImageInfo->Frames);
+		ImageInfo->aFrameInfo.resize(NumberOfFrames);
     }
 	
 	if (SUCCEEDED(hr))
@@ -2390,7 +2400,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 	if (SUCCEEDED(hr))
 	{OutputDebugStringW(L"pDecoder->GetFrameCount\n");
-		for (UINT i = 0U; i < ImageInfo->Frames; i++)
+		for (UINT i = 0U; i < ImageInfo->aFrameInfo.size(); i++)
 		{WCHAR buffer[260] = {0}; StringCchPrintfW(buffer, 260, L"Frame: %d\n", i); OutputDebugStringW(buffer);
 			
 			Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> pSource;
@@ -2607,7 +2617,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 	if (GUID_ContainerFormatGif == ImageInfo->guidContainerFormat)
 	{
-		for (UINT i = 0U; i < ImageInfo->Frames && SUCCEEDED(hr); i++)
+		for (UINT i = 0U; i < ImageInfo->aFrameInfo.size() && SUCCEEDED(hr); i++)
 		{
 			Microsoft::WRL::ComPtr<IWICBitmap> pIWICBitmap;
 
@@ -2750,7 +2760,7 @@ HRESULT Direct2DRenderer::SetHwnd(HWND hWnd)
 
 	if (!IsWindow(hWnd))
 	{
-		return ERROR_INVALID_HANDLE;
+		return E_HANDLE;
 	}
 
 	m_hWnd = hWnd;
@@ -3077,8 +3087,8 @@ HRESULT Direct2DRenderer::ResetRenderingParameters()
 		m_FitToWindow = true;
 	}
 
-	m_TranslatePoint = D2D1::Point2F(0.0f, 0.0f);
-	m_TranslatePointEnd = D2D1::Point2F(0.0f, 0.0f);
+	m_TranslatePoint = D2D1::Point2F(0.0F, 0.0F);
+	m_TranslatePointEnd = D2D1::Point2F(0.0F, 0.0F);
 
 	m_FrameCurrent = 0U;
 	m_uLoopNumber = 0U;
@@ -3107,23 +3117,23 @@ HRESULT Direct2DRenderer::OnDelete()
 {
 	HRESULT hr = S_OK;
 
-	WaitForSingleObject(hThreadCacheFileNameNext, INFINITE);
-	WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
+	(void)WaitForSingleObject(hThreadCacheFileNameNext, INFINITE);
+	(void)WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
 
 	if (0U != g_FileNamePosition)
 	{
-		FileNamePositionPrevious = g_FileNamePosition - 1U;
+		g_FileNamePositionPrevious = g_FileNamePosition - 1U;
 	}
 	else
 	{
-		FileNamePositionPrevious = (static_cast<UINT>(g_Files.size())) - 1U;
+		g_FileNamePositionPrevious = g_Files.size() - 1U;
 	}
 
-	g_FileNamePosition = FileNamePositionNext;
+	g_FileNamePosition = g_FileNamePositionNext;
 
 	m_ImageCurrent = m_ImageNext;
 
-	ResetRenderingParameters();
+	(void)ResetRenderingParameters();
 
 	hThreadCacheFileNameNext = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 		NULL, // void *security
@@ -3158,12 +3168,12 @@ HRESULT Direct2DRenderer::OnDelete()
 
 HRESULT Direct2DRenderer::OnFrameNext()
 {
-	if (1U == m_ImageCurrent.Frames || AnimationRunning)
+	if (1U == m_ImageCurrent.aFrameInfo.size() || AnimationRunning)
 	{
 		return S_OK;
 	}
 
-	if (m_FrameCurrent + 1U < m_ImageCurrent.Frames)
+	if (m_FrameCurrent + 1U < m_ImageCurrent.aFrameInfo.size())
 	{
 		m_FrameCurrent = m_FrameCurrent + 1U;
 	}
@@ -3172,33 +3182,36 @@ HRESULT Direct2DRenderer::OnFrameNext()
 		m_FrameCurrent = 0U;
 	}
 
-	SetTitleBarText();
+	HRESULT hr = SetTitleBarText();
+	if (FAILED(hr)) { return hr; }
 
 	return OnRender();
 }
 
 HRESULT Direct2DRenderer::GIF_OnFrameNext()
 {
-	KillTimer(m_hWnd, DELAY_TIMER_ID);
+	(void)KillTimer(m_hWnd, DELAY_TIMER_ID);
 
-	if (m_ImageCurrent.Frames == 1U || !AnimationRunning || m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
+	if (m_ImageCurrent.aFrameInfo.size() == 1U || !AnimationRunning || m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
 	{
 		if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
 		{
-			MessageBeep(MB_ICONASTERISK);
+			(void)MessageBeep(MB_ICONASTERISK);
 		}
 
 		AnimationRunning = false;
+
 		return S_OK;
 	}
 
-	if (m_FrameCurrent + 1U < m_ImageCurrent.Frames)
+	if (m_FrameCurrent + 1U < m_ImageCurrent.aFrameInfo.size())
 	{
 		m_FrameCurrent = m_FrameCurrent + 1U;
 	}
 	else
 	{
 		m_uLoopNumber++;
+
 		if (m_ImageCurrent.GifInfo.m_uTotalLoopCount != 0U && m_uLoopNumber >= m_ImageCurrent.GifInfo.m_uTotalLoopCount)
 		{
 			return S_OK;
@@ -3211,28 +3224,29 @@ HRESULT Direct2DRenderer::GIF_OnFrameNext()
 
 	AnimationRunning = true;
 	// Set the timer according to the delay
-	SetTimer(m_hWnd, DELAY_TIMER_ID, m_ImageCurrent.aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL);
+	(void)SetTimer(m_hWnd, DELAY_TIMER_ID, m_ImageCurrent.aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL);
 
 	return OnRender();
 }
 
 HRESULT Direct2DRenderer::OnFramePrevious()
 {
-	if (m_ImageCurrent.Frames == 1U || AnimationRunning)
+	if (m_ImageCurrent.aFrameInfo.size() == 1U || AnimationRunning)
 	{
 		return S_OK;
 	}
 
-	if (m_FrameCurrent != 0)
+	if (m_FrameCurrent != 0U)
 	{
 		m_FrameCurrent = m_FrameCurrent - 1U;
 	}
 	else
 	{
-		m_FrameCurrent = m_ImageCurrent.Frames - 1U;
+		m_FrameCurrent = static_cast<UINT>(m_ImageCurrent.aFrameInfo.size()) - 1U;
 	}
 
-	SetTitleBarText();
+	HRESULT hr = SetTitleBarText();
+	if (FAILED(hr)) { return hr; }
 
 	return OnRender();
 }
@@ -3241,19 +3255,27 @@ HRESULT Direct2DRenderer::OnNext()
 {
 	HRESULT hr = S_OK;
 
-	WaitForSingleObject(hThreadCacheFileNameNext, INFINITE);
+	(void)WaitForSingleObject(hThreadCacheFileNameNext, INFINITE);
 	//TerminateThread(hThreadCacheFileNamePrevious, 0);
-	WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
+	(void)WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
 
-	FileNamePositionPrevious = g_FileNamePosition;
-	g_FileNamePosition = FileNamePositionNext;
+	g_FileNamePositionPrevious = g_FileNamePosition;
+	g_FileNamePosition = g_FileNamePositionNext;
 
-	m_ImagePrevious = IMAGE_INFO();
+	for (auto it = m_ImageCurrent.aFrameInfo.begin(); it != m_ImageCurrent.aFrameInfo.end(); ++it)
+	{
+		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
+	}
+
+	for (auto it = m_ImageNext.aFrameInfo.begin(); it != m_ImageNext.aFrameInfo.end(); ++it)
+	{
+		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
+	}
 
 	m_ImagePrevious = m_ImageCurrent;
 	m_ImageCurrent = m_ImageNext;
 
-	ResetRenderingParameters();
+	(void)ResetRenderingParameters();
 
 	hThreadCacheFileNameNext = reinterpret_cast<HANDLE>(_beginthreadex( // NATIVE CODE
 		NULL, // void *security
@@ -3280,7 +3302,7 @@ HRESULT Direct2DRenderer::OnNext()
 
 	if (SUCCEEDED(hr))
 	{
-		SetTitleBarText(); // ignore return value
+		hr = SetTitleBarText();
 	}
 
 	return hr;
@@ -3290,15 +3312,22 @@ HRESULT Direct2DRenderer::OnPrevious()
 {
 	HRESULT hr = S_OK;
 
-	WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE);
+	(void)WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE);
 	//TerminateThread(hThreadCacheFileNameNext, 0);
-	WaitForSingleObject(hThreadCacheFileNameNext, INFINITE); // cludge
+	(void)WaitForSingleObject(hThreadCacheFileNameNext, INFINITE); // cludge
 
-	FileNamePositionNext = g_FileNamePosition;
-	g_FileNamePosition = FileNamePositionPrevious;
+	g_FileNamePositionNext = g_FileNamePosition;
+	g_FileNamePosition = g_FileNamePositionPrevious;
 
-	// Reset the image info to be a fresh instance
-	m_ImageNext = IMAGE_INFO();
+	for (auto it = m_ImageCurrent.aFrameInfo.begin(); it != m_ImageCurrent.aFrameInfo.end(); ++it)
+	{
+		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
+	}
+
+	for (auto it = m_ImagePrevious.aFrameInfo.begin(); it != m_ImagePrevious.aFrameInfo.end(); ++it)
+	{
+		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
+	}
 
 	m_ImageNext = m_ImageCurrent;
 	m_ImageCurrent = m_ImagePrevious;
@@ -3330,7 +3359,7 @@ HRESULT Direct2DRenderer::OnPrevious()
 
 	if (SUCCEEDED(hr))
 	{
-		SetTitleBarText(); // ignore return value
+		hr = SetTitleBarText();
 	}
 
 	return hr;
@@ -3364,17 +3393,17 @@ HRESULT Direct2DRenderer::SetTitleBarText()
 		std::wstring TitleBarText;
 
 		// If there is more than one frame
-		if (m_ImageCurrent.Frames > 1U &&
+		if (m_ImageCurrent.aFrameInfo.size() > 1U &&
 			// and the image is not a GIF
 			GUID_ContainerFormatGif != m_ImageCurrent.guidContainerFormat)
 		{
 			std::wstring FramePart;
 
-			size_t FramePartLength = 8U/*space+bracket+"Frame"+space*/ + NumberOfDigits(static_cast<int32_t>(m_FrameCurrent)) + 1U + 1U/*slash*/ + NumberOfDigits(static_cast<int32_t>(m_ImageCurrent.Frames)) + 2U/*bracket+null char*/;
+			size_t FramePartLength = 8U/*space+bracket+"Frame"+space*/ + NumberOfDigits(static_cast<int32_t>(m_FrameCurrent)) + 1U + 1U/*slash*/ + NumberOfDigits(static_cast<int32_t>(m_ImageCurrent.aFrameInfo.size())) + 2U/*bracket+null char*/;
 
 			FramePart.resize(FramePartLength);
 
-			hr = StringCchPrintfW(&FramePart[0], FramePartLength, L" (Frame %d/%d)", m_FrameCurrent + 1U, m_ImageCurrent.Frames);
+			hr = StringCchPrintfW(&FramePart[0], FramePartLength, L" (Frame %d/%d)", m_FrameCurrent + 1U, m_ImageCurrent.aFrameInfo.size());
 
 			TitleBarText.resize(FileTitleLength + FramePartLength);
 
@@ -3416,7 +3445,14 @@ HRESULT Direct2DRenderer::SetTitleBarText()
 
 HRESULT Direct2DRenderer::EnumerateDecoders(COMDLG_FILTERSPEC **paFilterSpec, UINT *cFileTypes)
 {
-	return EnumerateDecoders(m_pWICFactory.Get(), paFilterSpec, cFileTypes);
+	if (m_pWICFactory.Get())
+	{
+		return EnumerateDecoders(m_pWICFactory.Get(), paFilterSpec, cFileTypes);
+	}
+	else
+	{
+		return E_POINTER;
+	}
 }
 
 HRESULT Direct2DRenderer::EnumerateDecoders(IWICImagingFactory2 *pIWICFactory, COMDLG_FILTERSPEC **paFilterSpec, UINT *cFileTypes)
@@ -3752,7 +3788,7 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
 	//	hr = pMetadataQueryReader->GetMetadataByName(L"/commentext/TextEntry", &propValue);
 	//	if (SUCCEEDED(hr))
 	//	{
-	//		for (UINT i = 0U; i < ImageInfo->Frames; i++)
+	//		for (UINT i = 0U; i < ImageInfo->aFrameInfo.size(); i++)
 	//		{
 	//			if (ImageInfo->aFrameInfo[i].Title != nullptr)
 	//			{
@@ -3773,7 +3809,7 @@ inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecod
 	//	}
 	//	else
 	//	{
-	//		for (UINT i = 0U; i < ImageInfo->Frames; i++)
+	//		for (UINT i = 0U; i < ImageInfo->aFrameInfo.size(); i++)
 	//		{
 	//			if (ImageInfo->aFrameInfo[i].Title != nullptr)
 	//			{

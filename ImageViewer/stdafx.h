@@ -31,10 +31,6 @@
 #pragma comment(linker, "/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
 
-//#define WIN32_LEAN_AND_MEAN // Exclude rarely-used stuff from Windows headers
-
-#define MAX_PATH_UNICODE 32767
-
 #include "targetver.h"
 
 #include <windows.h>
@@ -42,12 +38,8 @@
 
 #include <vector> // std::vector (Include before Strsafe or will give compiler warnings)
 #include <map> // std::map
-#include <sapi.h> // Speech API
-#include <sphelper.h>
 #include <stdlib.h>
-#include <malloc.h>
 #include <memory.h>
-#include <tchar.h>
 #define STRSAFE_NO_CB_FUNCTIONS // allow only character count functions as using Unicode exclusively
 #include <Strsafe.h> // StringCchPrintfW
 #include <math.h> // ceil
@@ -64,6 +56,7 @@
 #include <memory> // std::unique_ptr
 #include <Pathcch.h> // PathCchRemoveFileSpec
 #include <climits> // MIN_INT
+#include <atomic> // std::atomic
 
 extern "C" {
 #include "transupp.h" // Support routines for jpegtran
@@ -76,7 +69,7 @@ extern "C" {
 
 struct FILESTRUCT
 {
-	UINT ID;
+	uint32_t ID;
 	std::wstring FullPath;
 	size_t SizeInBytes;
 	SYSTEMTIME DateModified;

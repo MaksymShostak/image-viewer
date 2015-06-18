@@ -58,9 +58,9 @@ const WCHAR szTitle[] = L"Image Viewer"; // The title bar text
 const WCHAR szWindowClass[] = L"445F6F25-065C-411D-B16E-A3E887660B76"; // the main window class name
 std::wstring g_FileName; // L"C:\\Users\\Max\\Desktop\\Optimal_Colony_Layout.png";
 std::wstring FileDirectory;
-UINT g_FileNamePosition = 0U;
-UINT FileNamePositionPrevious = 0U;
-UINT FileNamePositionNext = 0U;
+volatile size_t g_FileNamePosition = 0;
+volatile size_t g_FileNamePositionPrevious = 0;
+volatile size_t g_FileNamePositionNext = 0;
 std::vector<std::wstring> g_Directories;
 std::vector<FILESTRUCT> g_Files;
 HCURSOR hCursorArrow = nullptr;
@@ -76,7 +76,7 @@ UINT NumberOfFileExtensions = 0U;
 HMENU hRightClickMenu = nullptr;
 HMENU hRightClickMenuTitleBar = nullptr;
 //UINT g_NumberOfProcessors = 0U;
-bool g_BlockMovement = false;
+volatile std::atomic_bool g_BlockMovement = false;
 COMMONITEMDIALOGOPEN g_commonitemdialogopen;
 DELETEFILEWITHIFO g_deletefilewithifo;
 extern UINT const DELAY_TIMER_ID = 1U;    // Global ID for the timer, only one timer is used

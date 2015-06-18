@@ -12,9 +12,9 @@ extern void ErrorDescription(HRESULT hr);
 extern void HRESULTDecode(HRESULT hr, LPWSTR Severity, LPWSTR Facility, LPWSTR ErrorDescription);
 extern size_t CountOccurencesOfCharacterInString(wchar_t character, std::wstring * pString);
 extern std::vector<FILESTRUCT> g_Files;
-extern UINT g_FileNamePosition;
-extern UINT FileNamePositionPrevious;
-extern UINT FileNamePositionNext;
+extern volatile size_t g_FileNamePosition;
+extern volatile size_t g_FileNamePositionPrevious;
+extern volatile size_t g_FileNamePositionNext;
 extern HANDLE hThreadCreateFileNameVectorFromDirectory;
 extern const UINT DELAY_TIMER_ID;
 
@@ -46,6 +46,7 @@ struct GIF_INFO
 struct FRAME_INFO
 {
 	Microsoft::WRL::ComPtr<IWICBitmapSource> pIWICBitmapSource;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap1> pID2D1Bitmap1;
 	D2D1_SIZE_F Size;
 	std::wstring Title;
 	unsigned char RotationFlag;
@@ -55,13 +56,14 @@ struct FRAME_INFO
 	bool UserInputFlag;
 
 	FRAME_INFO() :
-		m_framePosition(D2D1::RectF(0.0F, 0.0F, 0.0F, 0.0F)),
-		m_uFrameDelay(0U),
-		m_uFrameDisposal(0U),
 		pIWICBitmapSource(nullptr),
-		RotationFlag(1U),
+		pID2D1Bitmap1(nullptr),
 		Size(D2D1::SizeF(0.0F, 0.0F)),
 		Title(),
+		RotationFlag(1U),
+		m_uFrameDisposal(0U),
+		m_uFrameDelay(0U),
+		m_framePosition(D2D1::RectF(0.0F, 0.0F, 0.0F, 0.0F)),
 		UserInputFlag(false)
 		{}
 };
@@ -70,13 +72,11 @@ struct IMAGE_INFO
 {
 	HRESULT LoadResult;
 	GUID guidContainerFormat;
-	UINT Frames;
 	std::vector<FRAME_INFO> aFrameInfo;
 	GIF_INFO GifInfo;
 
 	IMAGE_INFO() :
 		aFrameInfo(),
-		Frames(0U),
 		GifInfo(),
 		guidContainerFormat(GUID_NULL),
 		LoadResult(E_FAIL)
@@ -123,8 +123,8 @@ public:
 	friend static unsigned WINAPI StaticCacheFileNamePrevious(LPVOID Param);
 	friend static unsigned WINAPI StaticCacheFileNameNext(LPVOID Param);
 
-	unsigned CacheFileNamePrevious(UINT);
-	unsigned CacheFileNameNext(UINT);
+	unsigned CacheFileNamePrevious(size_t);
+	unsigned CacheFileNameNext(size_t);
 	
 private:
 	HRESULT CreateDeviceResources();

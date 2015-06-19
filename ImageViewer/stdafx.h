@@ -37,6 +37,7 @@
 #include <Windowsx.h> // HANDLE_MSG
 
 #include <vector> // std::vector (Include before Strsafe or will give compiler warnings)
+#include <list> //std::list
 #include <map> // std::map
 #include <stdlib.h>
 #include <memory.h>
@@ -57,6 +58,8 @@
 #include <Pathcch.h> // PathCchRemoveFileSpec
 #include <climits> // MIN_INT
 #include <atomic> // std::atomic
+#include <d2d1_1.h> // D2D1_SIZE_U
+#include <wincodec.h> // IWICImagingFactory2
 
 extern "C" {
 #include "transupp.h" // Support routines for jpegtran
@@ -67,13 +70,69 @@ extern "C" {
 #define OutputDebugStringW(expr) ((void)0)
 #endif
 
-struct FILESTRUCT
+struct GIF_INFO
+{
+	D2D1_SIZE_U Size;
+	D2D1_COLOR_F BackgroundColor;
+	UINT m_cxGifImagePixel;
+	UINT m_cyGifImagePixel;
+	UINT m_uTotalLoopCount;
+
+	GIF_INFO() :
+		BackgroundColor(D2D1::ColorF(0U, 0.0F)),
+		m_cxGifImagePixel(0U),
+		m_cyGifImagePixel(0U),
+		m_uTotalLoopCount(0U),
+		Size(D2D1::SizeU(0U, 0U))
+	{}
+};
+
+struct FRAME_INFO
+{
+	Microsoft::WRL::ComPtr<IWICBitmapSource> pIWICBitmapSource;
+	Microsoft::WRL::ComPtr<ID2D1Bitmap1> pID2D1Bitmap1;
+	D2D1_SIZE_F Size;
+	std::wstring Title;
+	unsigned char RotationFlag;
+	UINT m_uFrameDisposal;
+	UINT m_uFrameDelay;
+	D2D1_RECT_F m_framePosition;
+	bool UserInputFlag;
+
+	FRAME_INFO() :
+		pIWICBitmapSource(nullptr),
+		pID2D1Bitmap1(nullptr),
+		Size(D2D1::SizeF(0.0F, 0.0F)),
+		Title(),
+		RotationFlag(1U),
+		m_uFrameDisposal(0U),
+		m_uFrameDelay(0U),
+		m_framePosition(D2D1::RectF(0.0F, 0.0F, 0.0F, 0.0F)),
+		UserInputFlag(false)
+	{}
+};
+
+struct IMAGEFILE
 {
 	uint32_t ID;
 	std::wstring FullPath;
 	size_t SizeInBytes;
 	SYSTEMTIME DateModified;
-	//HBITMAP Thumbnail;
+	HRESULT LoadResult;
+	GUID guidContainerFormat;
+	std::vector<FRAME_INFO> aFrameInfo;
+	GIF_INFO GifInfo;
+
+	IMAGEFILE() :
+		ID(0U),
+		FullPath(),
+		SizeInBytes(0U),
+		DateModified({ 0 }),
+		LoadResult(E_FAIL),
+		guidContainerFormat(GUID_NULL),
+		aFrameInfo(),
+		GifInfo()
+	{}
 };
 
 template<class Interface>

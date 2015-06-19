@@ -58,16 +58,14 @@ const WCHAR szTitle[] = L"Image Viewer"; // The title bar text
 const WCHAR szWindowClass[] = L"445F6F25-065C-411D-B16E-A3E887660B76"; // the main window class name
 std::wstring g_FileName; // L"C:\\Users\\Max\\Desktop\\Optimal_Colony_Layout.png";
 std::wstring FileDirectory;
-volatile size_t g_FileNamePosition = 0;
-volatile size_t g_FileNamePositionPrevious = 0;
-volatile size_t g_FileNamePositionNext = 0;
 std::vector<std::wstring> g_Directories;
-std::vector<FILESTRUCT> g_Files;
+std::list<IMAGEFILE> g_Files;
+std::list<IMAGEFILE>::iterator g_IteratorCurrent;
 HCURSOR hCursorArrow = nullptr;
 HCURSOR hCursorHand = nullptr;
 HCURSOR hCursorHandClosed = nullptr;
 bool bFullscreen = false;
-POINT DragStart = {0};
+POINT DragStart = { 0 };
 HANDLE hThreadCreateFileNameVectorFromDirectory = nullptr;
 COMDLG_FILTERSPEC *FilterSpec = nullptr;
 UINT cFileTypes = 0U;

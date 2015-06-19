@@ -1,8 +1,6 @@
 #pragma once
 
-#include <d2d1_1.h>
 #include <dwrite_1.h>
-#include <wincodec.h> // IWICImagingFactory2
 #include <Wincodecsdk.h> // IWICMetadataBlockWriter
 #include <Icm.h> // GetStandardColorSpaceProfileW
 #include <comdef.h>
@@ -11,10 +9,8 @@
 extern void ErrorDescription(HRESULT hr);
 extern void HRESULTDecode(HRESULT hr, LPWSTR Severity, LPWSTR Facility, LPWSTR ErrorDescription);
 extern size_t CountOccurencesOfCharacterInString(wchar_t character, std::wstring * pString);
-extern std::vector<FILESTRUCT> g_Files;
-extern volatile size_t g_FileNamePosition;
-extern volatile size_t g_FileNamePositionPrevious;
-extern volatile size_t g_FileNamePositionNext;
+extern std::list<IMAGEFILE> g_Files;
+extern std::list<IMAGEFILE>::iterator g_IteratorCurrent;
 extern HANDLE hThreadCreateFileNameVectorFromDirectory;
 extern const UINT DELAY_TIMER_ID;
 
@@ -24,63 +20,6 @@ enum DISPOSAL_METHODS
     DM_NONE       = 1,
     DM_BACKGROUND = 2,
     DM_PREVIOUS   = 3 
-};
-
-struct GIF_INFO
-{
-	D2D1_SIZE_U Size;
-	D2D1_COLOR_F BackgroundColor;
-	UINT m_cxGifImagePixel;
-	UINT m_cyGifImagePixel;
-	UINT m_uTotalLoopCount;
-
-	GIF_INFO() :
-		BackgroundColor(D2D1::ColorF(0U, 0.0F)),
-		m_cxGifImagePixel(0U),
-		m_cyGifImagePixel(0U),
-		m_uTotalLoopCount(0U),
-		Size(D2D1::SizeU(0U, 0U))
-		{}
-};
-
-struct FRAME_INFO
-{
-	Microsoft::WRL::ComPtr<IWICBitmapSource> pIWICBitmapSource;
-	Microsoft::WRL::ComPtr<ID2D1Bitmap1> pID2D1Bitmap1;
-	D2D1_SIZE_F Size;
-	std::wstring Title;
-	unsigned char RotationFlag;
-	UINT m_uFrameDisposal;
-	UINT m_uFrameDelay;
-	D2D1_RECT_F m_framePosition;
-	bool UserInputFlag;
-
-	FRAME_INFO() :
-		pIWICBitmapSource(nullptr),
-		pID2D1Bitmap1(nullptr),
-		Size(D2D1::SizeF(0.0F, 0.0F)),
-		Title(),
-		RotationFlag(1U),
-		m_uFrameDisposal(0U),
-		m_uFrameDelay(0U),
-		m_framePosition(D2D1::RectF(0.0F, 0.0F, 0.0F, 0.0F)),
-		UserInputFlag(false)
-		{}
-};
-
-struct IMAGE_INFO
-{
-	HRESULT LoadResult;
-	GUID guidContainerFormat;
-	std::vector<FRAME_INFO> aFrameInfo;
-	GIF_INFO GifInfo;
-
-	IMAGE_INFO() :
-		aFrameInfo(),
-		GifInfo(),
-		guidContainerFormat(GUID_NULL),
-		LoadResult(E_FAIL)
-		{}
 };
 
 class Direct2DRenderer
@@ -94,7 +33,7 @@ public:
 	HRESULT EnumerateDecoders(COMDLG_FILTERSPEC **ppFilterSpec, UINT *cFileTypes);
 	HRESULT FitToWindow();
 	HRESULT GIF_OnFrameNext();
-	HRESULT LoadBitmapCurrent(LPCWSTR FileName);
+	HRESULT LoadBitmapCurrent();
 	HRESULT OnAnimationStartStop();
 	HRESULT OnDelete();
 	HRESULT OnFrameNext();
@@ -123,8 +62,8 @@ public:
 	friend static unsigned WINAPI StaticCacheFileNamePrevious(LPVOID Param);
 	friend static unsigned WINAPI StaticCacheFileNameNext(LPVOID Param);
 
-	unsigned CacheFileNamePrevious(size_t);
-	unsigned CacheFileNameNext(size_t);
+	unsigned int CacheFileNamePrevious();
+	unsigned int CacheFileNameNext();
 	
 private:
 	HRESULT CreateDeviceResources();
@@ -137,14 +76,13 @@ private:
 
 	inline HRESULT GetFrameMetadata(IWICBitmapFrameDecode *pWICBitmapFrameDecode, FRAME_INFO *FrameInfo);
 	inline HRESULT GIF_GetFrameMetadata(IWICBitmapFrameDecode *pWICBitmapFrameDecode, FRAME_INFO *FrameInfo);
-	inline HRESULT GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecoder, IMAGE_INFO *ImageInfo);
+	inline HRESULT GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecoder, IMAGEFILE *ImageInfo);
 	inline HRESULT GIF_GetBackgroundColor(IWICBitmapDecoder *pDecoder, IWICMetadataQueryReader *pMetadataQueryReader, D2D1_COLOR_F *BackgroundColor);
 
 	HRESULT LoadBitmapFromFile(
         IWICImagingFactory2 *pIWICFactory,
-		LPCWSTR FileName,
-		IWICColorContext *pContextDst,
-		IMAGE_INFO *ImageInfo
+		IMAGEFILE* file,
+		IWICColorContext *pContextDst
         );
 
 	HRESULT RotateByMetadata(IWICImagingFactory2 *pIWICFactory, LPCWSTR FileName, USHORT *pRotationFlag, bool Clockwise);
@@ -168,9 +106,6 @@ private:
 	Microsoft::WRL::ComPtr<ID2D1Factory1> m_pD2DFactory;
 	Microsoft::WRL::ComPtr<IWICImagingFactory2> m_pWICFactory;
 	Microsoft::WRL::ComPtr<ID2D1DeviceContext> m_pRenderTarget;
-	IMAGE_INFO m_ImagePrevious;
-	IMAGE_INFO m_ImageCurrent;
-	IMAGE_INFO m_ImageNext;
 	UINT m_FrameCurrent;
 	FLOAT m_dpiX, m_dpiY;
 	D2D1_SIZE_F m_BitmapSizeFitToWindow;

@@ -248,12 +248,12 @@ void RTrim(LPWSTR String, UINT StringMaxLength, const UINT NumberOfCharsToTrim)
 
 unsigned int WINAPI StaticCacheFileNameNext(void* Param)
 {
-	return (reinterpret_cast<Direct2DRenderer*>(Param))->CacheFileNameNext(g_FileNamePosition);
+	return (reinterpret_cast<Direct2DRenderer*>(Param))->CacheFileNameNext();
 }
 
 unsigned int WINAPI StaticCacheFileNamePrevious(void* Param)
 {
-	return (reinterpret_cast<Direct2DRenderer*>(Param))->CacheFileNamePrevious(g_FileNamePosition);
+	return (reinterpret_cast<Direct2DRenderer*>(Param))->CacheFileNamePrevious();
 }
 
 //
@@ -305,9 +305,9 @@ Direct2DRenderer::Direct2DRenderer() :
 		SafeRelease(m_ImagePrevious.aFrameInfo[i].pBitmap.GetAddressOf());
 	}
 
-	for (UINT i = 0U; i < m_ImageCurrent.aFrameInfo.size(); i++)
+	for (UINT i = 0U; i < g_IteratorCurrent->aFrameInfo.size(); i++)
 	{
-		SafeRelease(m_ImageCurrent.aFrameInfo[i].pBitmap.GetAddressOf());
+		SafeRelease(g_IteratorCurrent->aFrameInfo[i].pBitmap.GetAddressOf());
 	}
 
 	for (UINT i = 0U; i < m_ImageNext.aFrameInfo.size(); i++)
@@ -345,29 +345,29 @@ HRESULT Direct2DRenderer::OnRender()
 		if (DeviceResourcesDiscarded)
 		{
 			//LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
-			m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1 = nullptr;
+			g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pID2D1Bitmap1 = nullptr;
 			DeviceResourcesDiscarded = false; // only reload once
 		}
 
 		// If the device bitmap has not yet been created
-		if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1.Get())
+		if (!g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pID2D1Bitmap1.Get())
 		{
 			// Create a Direct2D bitmap from the WIC bitmap
 			hr = m_pRenderTarget->CreateBitmapFromWicBitmap(
-				m_ImageCurrent.aFrameInfo[m_FrameCurrent].pIWICBitmapSource.Get(),
+				g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pIWICBitmapSource.Get(),
 				NULL,
-				&m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1
+				&g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pID2D1Bitmap1
 				);
 			if (FAILED(hr)) { return hr; }
 
-			//m_ImageCurrent.aFrameInfo[m_FrameCurrent].pIWICBitmapSource = nullptr;
+			//g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pIWICBitmapSource = nullptr;
 		}
 
 		m_pRenderTarget->BeginDraw();
 		
 		m_pRenderTarget->Clear(D2D1::ColorF(BackgroundColorBlack ? D2D1::ColorF::Black : D2D1::ColorF::White));
 
-		if (m_ImageCurrent.LoadResult == S_OK)
+		if (g_IteratorCurrent->LoadResult == S_OK)
 		{
 			if (m_FitToWindow)
 			{
@@ -378,51 +378,51 @@ HRESULT Direct2DRenderer::OnRender()
 				m_TranslatePoint = D2D1::Point2F(0.0f, 0.0f);
 				m_TranslatePointEnd = D2D1::Point2F(0.0f, 0.0f);
 
-				if (m_ImageCurrent.guidContainerFormat == GUID_ContainerFormatGif && m_ImageCurrent.aFrameInfo.size() > 1U) // CLUDGE, fix with proper function for FitToWindowSize (use CalculateDrawRectangle for motivation)
+				if (g_IteratorCurrent->guidContainerFormat == GUID_ContainerFormatGif && g_IteratorCurrent->aFrameInfo.size() > 1U) // CLUDGE, fix with proper function for FitToWindowSize (use CalculateDrawRectangle for motivation)
 				{
 					if (ConformGIF)
 					{
-						m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width = static_cast<FLOAT>(m_ImageCurrent.GifInfo.m_cxGifImagePixel); // use this set to conform to standard
-						m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height = static_cast<FLOAT>(m_ImageCurrent.GifInfo.m_cyGifImagePixel);
+						g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width = static_cast<FLOAT>(g_IteratorCurrent->GifInfo.m_cxGifImagePixel); // use this set to conform to standard
+						g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height = static_cast<FLOAT>(g_IteratorCurrent->GifInfo.m_cyGifImagePixel);
 					}
 					else
 					{
-						m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width = static_cast<FLOAT>(m_ImageCurrent.GifInfo.Size.width); // use this set to ignore the aspect ratio metadata (IE does this)
-						m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height = static_cast<FLOAT>(m_ImageCurrent.GifInfo.Size.height);
+						g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width = static_cast<FLOAT>(g_IteratorCurrent->GifInfo.Size.width); // use this set to ignore the aspect ratio metadata (IE does this)
+						g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height = static_cast<FLOAT>(g_IteratorCurrent->GifInfo.Size.height);
 					}				
 				}
 
-				if ((_Direct2DRenderTargetSize.width >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is larger than image
+				if ((_Direct2DRenderTargetSize.width >= g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height >= g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height)) // if window is larger than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is larger than image\n");
-					m_BitmapSizeFitToWindow = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size;
+					m_BitmapSizeFitToWindow = g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size;
 					m_zoomMax = 20.0f;
 				}
-				else if ((_Direct2DRenderTargetSize.width >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is shorter than image
+				else if ((_Direct2DRenderTargetSize.width >= g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height < g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height)) // if window is shorter than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is shorter than image\n");
-					ScaleFactor = _Direct2DRenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+					ScaleFactor = _Direct2DRenderTargetSize.height/g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height;
 					m_zoomMax = 20.0f/ScaleFactor;
 				}
-				else if ((_Direct2DRenderTargetSize.width < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height >= m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is thinner than image
+				else if ((_Direct2DRenderTargetSize.width < g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height >= g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height)) // if window is thinner than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is thinner than image\n");
-					ScaleFactor = _Direct2DRenderTargetSize.width/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
+					ScaleFactor = _Direct2DRenderTargetSize.width/g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width;
 					m_zoomMax = 20.0f/ScaleFactor;
 				}
-				else if ((_Direct2DRenderTargetSize.width < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height < m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height)) // if window is smaller than image
+				else if ((_Direct2DRenderTargetSize.width < g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width) && (_Direct2DRenderTargetSize.height < g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height)) // if window is smaller than image
 				{OutputDebugStringW(L"m_bFitToWindow: window is smaller than image\n");
-					if (((m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width - _Direct2DRenderTargetSize.width)/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width) < ((m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height - _Direct2DRenderTargetSize.height)/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height))
+					if (((g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width - _Direct2DRenderTargetSize.width)/g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width) < ((g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height - _Direct2DRenderTargetSize.height)/g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height))
 					{OutputDebugStringW(L"m_bFitToWindow: height constrained\n");
-						ScaleFactor = _Direct2DRenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+						ScaleFactor = _Direct2DRenderTargetSize.height/g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height;
 						m_zoomMax = 20.0f/ScaleFactor;
 					}
 					else
 					{OutputDebugStringW(L"m_bFitToWindow: width constrained\n");
-						ScaleFactor = _Direct2DRenderTargetSize.width/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
+						ScaleFactor = _Direct2DRenderTargetSize.width/g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width;
 						m_zoomMax = 20.0f/ScaleFactor;
 					}
 				}
 			
-				m_BitmapSizeFitToWindow.width = ScaleFactor * m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width;
-				m_BitmapSizeFitToWindow.height = ScaleFactor * m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+				m_BitmapSizeFitToWindow.width = ScaleFactor * g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width;
+				m_BitmapSizeFitToWindow.height = ScaleFactor * g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height;
 
 				CalculateBitmapTranslatePoint(_Direct2DRenderTargetSize);
 
@@ -431,10 +431,10 @@ HRESULT Direct2DRenderer::OnRender()
 			else if (m_ScaleToWindow)
 			{
 				m_TransformMatrixScale = D2D1::Matrix3x2F::Identity();
-				m_zoom = (FLOAT)_Direct2DRenderTargetSize.height/m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height;
+				m_zoom = (FLOAT)_Direct2DRenderTargetSize.height/ g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height;
 				m_zoomMax = 20.0f;
 
-				m_BitmapSizeFitToWindow.width = (FLOAT)_Direct2DRenderTargetSize.height * (m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width)/(m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.height);
+				m_BitmapSizeFitToWindow.width = (FLOAT)_Direct2DRenderTargetSize.height * (g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width)/(g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.height);
 				m_BitmapSizeFitToWindow.height = (FLOAT)_Direct2DRenderTargetSize.height;
 
 				CalculateBitmapTranslatePoint(_Direct2DRenderTargetSize);
@@ -485,7 +485,7 @@ HRESULT Direct2DRenderer::OnRender()
 			//	hr = m_pRenderTarget->CreateBitmapFromWicBitmap(
 			//		pWICBitmap, //spConverter,
 			//		NULL,
-			//		&(m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap)
+			//		&(g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pBitmap)
 			//		);
 
 			//	pWICBitmap->Release();
@@ -494,7 +494,7 @@ HRESULT Direct2DRenderer::OnRender()
 
 			m_pRenderTarget->DrawBitmap
 			(
-				m_ImageCurrent.aFrameInfo[m_FrameCurrent].pID2D1Bitmap1.Get(),
+				g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pID2D1Bitmap1.Get(),
 				D2D1::RectF
 				(
 					0.0f,
@@ -532,7 +532,7 @@ HRESULT Direct2DRenderer::OnRender()
 
 			WCHAR ErrorDescription[SHRT_MAX] = {0};
 
-			HRESULTDecode(m_ImageCurrent.LoadResult, NULL, NULL, ErrorDescription);
+			HRESULTDecode(g_IteratorCurrent->LoadResult, NULL, NULL, ErrorDescription);
 
 			m_pRenderTarget->DrawTextW(
 				ErrorDescription,
@@ -573,21 +573,27 @@ HRESULT Direct2DRenderer::OnRender()
 
 	if (SUCCEEDED(hr))
 	{
-		if (GUID_ContainerFormatGif == m_ImageCurrent.guidContainerFormat)
+		// If you're rendering a GIF
+		if (GUID_ContainerFormatGif == g_IteratorCurrent->guidContainerFormat)
 		{
-			if (m_ImageCurrent.aFrameInfo.size() > 1U && 0U == m_uLoopNumber && 0U == m_FrameCurrent)
+			// and you have more than one frame
+			if (g_IteratorCurrent->aFrameInfo.size() > 1U
+				// and you have just started the animation
+				&& 0U == m_uLoopNumber && 0U == m_FrameCurrent)
 			{
-				if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
+				// if the current frame requires user input
+				if (g_IteratorCurrent->aFrameInfo[m_FrameCurrent].UserInputFlag)
 				{
 					AnimationRunning = false;
-					MessageBeep(MB_ICONWARNING);
+					(void)MessageBeep(MB_ICONWARNING);
 				}
 				else
 				{
-					m_uLoopNumber = 1U; // increment immediately so that if user stops animation and returns to first frame within first loop, this doesn't fire up again - comparison with loop number max then has to be >= to stop
+					// increment immediately so that if user stops animation and returns to first frame within first loop, this doesn't fire up again - comparison with loop number max then has to be >= to stop
+					m_uLoopNumber = 1U;
 					AnimationRunning = true;
-					// Set the timer according to the delay
-					SetTimer(m_hWnd, DELAY_TIMER_ID, m_ImageCurrent.aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL); // The clock starts ticking immediately after the graphic is rendered
+					// Set a timer according to the delay; it starts ticking immediately
+					(void)SetTimer(m_hWnd, DELAY_TIMER_ID, g_IteratorCurrent->aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL);
 				}
 			}
 		}
@@ -600,31 +606,32 @@ HRESULT Direct2DRenderer::OnRender()
 			//hr = CalculateDrawRectangle(drawRect);
 			//if (SUCCEEDED(hr))
 			//{
-			//	m_pRenderTarget->DrawBitmap(m_ImageCurrent.aFrameInfo[m_FrameCurrent].pBitmap, drawRect);
+			//	m_pRenderTarget->DrawBitmap(g_IteratorCurrent->aFrameInfo[m_FrameCurrent].pBitmap, drawRect);
 			//}
 
 bool Direct2DRenderer::RotateAutoEnabled()
 {
-	return (m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag != 1U) ? true : false; // Assumption: Rotation flag will only exists for JPEGs
+	// Assumption: Rotation flag will only exists for JPEGs
+	return (g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag != 1U) ? true : false;
 }
 
 bool Direct2DRenderer::RotateEnabled()
 {
 	bool ReturnValue = false;
 
-	if (m_ImageCurrent.guidContainerFormat != GUID_NULL &&
-		m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag != 2U &&
-		m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag != 4U &&
-		m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag != 5U &&
-		m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag != 7U) // these rotation flags cannot be rectified by any combination of clockwise/counterclockwise rotations
+	if (g_IteratorCurrent->guidContainerFormat != GUID_NULL &&
+		g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag != 2U &&
+		g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag != 4U &&
+		g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag != 5U &&
+		g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag != 7U) // these rotation flags cannot be rectified by any combination of clockwise/counterclockwise rotations
 	{
-		if (GUID_ContainerFormatJpeg == m_ImageCurrent.guidContainerFormat) // can always rotate JPEG
+		if (GUID_ContainerFormatJpeg == g_IteratorCurrent->guidContainerFormat) // can always rotate JPEG
 		{
 			ReturnValue = true;
 		}
 		else
 		{
-			ReturnValue = DecoderHasEncoder.find(m_ImageCurrent.guidContainerFormat)->second;
+			ReturnValue = DecoderHasEncoder.find(g_IteratorCurrent->guidContainerFormat)->second;
 		}
 	}
 
@@ -633,12 +640,12 @@ bool Direct2DRenderer::RotateEnabled()
 
 HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 {
-	WCHAR FileNameUnicode[PATHCCH_MAX_CCH] = L"\\\\?\\";
+	WCHAR FileNameUnicode[PATHCCH_MAX_CCH] = LR"(\\?\)";
 	WCHAR FileNameTemporary[PATHCCH_MAX_CCH] = {0};
 	WIN32_FILE_ATTRIBUTE_DATA FileAttributeDataOriginal = {0};
 	HANDLE HandleNew = nullptr;
 
-	HRESULT hr = StringCchCatW(FileNameUnicode, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
+	HRESULT hr = StringCchCatW(FileNameUnicode, PATHCCH_MAX_CCH, g_IteratorCurrent->FullPath.c_str());
 
 	if (SUCCEEDED(hr))
 	{
@@ -647,7 +654,7 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 	
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCopyW(FileNameTemporary, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
+		hr = StringCchCopyW(FileNameTemporary, PATHCCH_MAX_CCH, g_IteratorCurrent->FullPath.c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -657,13 +664,13 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		if (m_ImageCurrent.guidContainerFormat == GUID_ContainerFormatJpeg)
+		if (g_IteratorCurrent->guidContainerFormat == GUID_ContainerFormatJpeg)
 		{
-			hr = RotateJPEG(g_Files[g_FileNamePosition].FullPath.c_str(), FileNameTemporary, m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag, Clockwise);
+			hr = RotateJPEG(g_IteratorCurrent->FullPath.c_str(), FileNameTemporary, g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag, Clockwise);
 		}
 		else
 		{
-			hr = RotateByReencode(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), FileNameTemporary, Clockwise);
+			hr = RotateByReencode(m_pWICFactory.Get(), g_IteratorCurrent->FullPath.c_str(), FileNameTemporary, Clockwise);
 			if (FAILED(hr) && hr != WINCODEC_ERR_ABORTED) // delete the temporary file we created in case the above function fails
 			{
 				if (SUCCEEDED(StringCchCatW(FileNameUnicode, PATHCCH_MAX_CCH, L"temp")))
@@ -681,12 +688,12 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCopyW(FileNameTemporary, PATHCCH_MAX_CCH, L"\\\\?\\");
+		hr = StringCchCopyW(FileNameTemporary, PATHCCH_MAX_CCH, LR"(\\?\)");
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		hr = StringCchCatW(FileNameTemporary, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
+		hr = StringCchCatW(FileNameTemporary, PATHCCH_MAX_CCH, g_IteratorCurrent->FullPath.c_str());
 	}
 
 	if (SUCCEEDED(hr))
@@ -717,10 +724,16 @@ HRESULT Direct2DRenderer::Rotate(bool Clockwise)
 
 	if (SUCCEEDED(hr))
 	{
-		LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePosition].FullPath.c_str(), m_pContextDst.Get(), &m_ImageCurrent);
+		hr = LoadBitmapFromFile(m_pWICFactory.Get(), &(*g_IteratorCurrent), m_pContextDst.Get());
+	}
 
-		ResetRenderingParameters();
+	if (SUCCEEDED(hr))
+	{
+		hr = ResetRenderingParameters();
+	}
 
+	if (SUCCEEDED(hr))
+	{
 		hr = OnRender();
 	}
 
@@ -826,7 +839,7 @@ HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory2 *pIWICFactory, LP
 	// Create the encoder.
 	if (SUCCEEDED(hr))
 	{
-		hr = pIWICFactory->CreateEncoder(m_ImageCurrent.guidContainerFormat, NULL, &piEncoder);
+		hr = pIWICFactory->CreateEncoder(g_IteratorCurrent->guidContainerFormat, NULL, &piEncoder);
 		//if (hr == WINCODEC_ERR_COMPONENTNOTFOUND)
 		//{
 		//	//no encoder exists
@@ -840,7 +853,7 @@ HRESULT Direct2DRenderer::RotateByReencode(IWICImagingFactory2 *pIWICFactory, LP
 	}
 
 	//Process each frame of the image.
-	for (UINT i = 0U; i < m_ImageCurrent.aFrameInfo.size() && SUCCEEDED(hr); i++)
+	for (UINT i = 0U; i < g_IteratorCurrent->aFrameInfo.size() && SUCCEEDED(hr); i++)
 	{
 		//Frame variables.
 		Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> piFrameDecode;
@@ -1541,10 +1554,16 @@ HRESULT Direct2DRenderer::RotateByMetadata(IWICImagingFactory2 *pIWICFactory, LP
 
 	if (SUCCEEDED(hr))
 	{OutputDebugStringW(L"pFME->Commit\n");
-		LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), &m_ImageCurrent);
+		hr = LoadBitmapFromFile(m_pWICFactory.Get(), &(*g_IteratorCurrent), m_pContextDst.Get());
+	}
 
-		ResetRenderingParameters();
+	if (SUCCEEDED(hr))
+	{
+		hr = ResetRenderingParameters();
+	}
 
+	if (SUCCEEDED(hr))
+	{
 		hr = OnRender();
 	}
 
@@ -1556,9 +1575,9 @@ HRESULT Direct2DRenderer::ActualSize()
 	m_FitToWindow = false;
 
 	m_TransformMatrixScale = D2D1::Matrix3x2F::Identity();
-	m_zoom = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width/m_BitmapSizeFitToWindow.width;
-	m_zoomMax = 20.0f*m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size.width/m_BitmapSizeFitToWindow.width;
-	m_BitmapSizeFitToWindow = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Size;
+	m_zoom = g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width/m_BitmapSizeFitToWindow.width;
+	m_zoomMax = 20.0f*g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size.width/m_BitmapSizeFitToWindow.width;
+	m_BitmapSizeFitToWindow = g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Size;
 
 	D2D1_SIZE_U WindowSize = m_pRenderTarget->GetPixelSize();
 
@@ -1570,24 +1589,33 @@ HRESULT Direct2DRenderer::ActualSize()
 	return OnRender();
 }
 
-unsigned int Direct2DRenderer::CacheFileNameNext(size_t FileNamePositionToWorkFrom)
+unsigned int Direct2DRenderer::CacheFileNameNext()
 {
-	if ((FileNamePositionToWorkFrom + 1U) < g_Files.size())
+	std::list<IMAGEFILE>::iterator iteratorNext;
+
+	if (--g_Files.end() != g_IteratorCurrent)
 	{
-		g_FileNamePositionNext = FileNamePositionToWorkFrom + 1U;
+		iteratorNext = std::next(g_IteratorCurrent);
 	}
 	else
 	{
-		g_FileNamePositionNext = 0U;
+		iteratorNext = g_Files.begin();
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePositionNext].FullPath.c_str(), m_pContextDst.Get(), &m_ImageNext);
+	// If there is only one file left in the directory after a delete
+	if (iteratorNext == g_IteratorCurrent)
+	{
+		return 0U;
+	}
+
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), &(*iteratorNext), m_pContextDst.Get());
 
 	if (FAILED(hr))
 	{
 		if (HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr)
 		{
-			return CacheFileNameNext(((FileNamePositionToWorkFrom + 1U) < g_Files.size()) ? FileNamePositionToWorkFrom + 1U : 0U);
+			return -E_NOTIMPL;
+			//return CacheFileNameNext(((FileNamePositionToWorkFrom + 1U) < g_Files.size()) ? FileNamePositionToWorkFrom + 1U : 0U);
 		}
 		else
 		{
@@ -1598,24 +1626,27 @@ unsigned int Direct2DRenderer::CacheFileNameNext(size_t FileNamePositionToWorkFr
 	return hr;
 }
 
-unsigned int Direct2DRenderer::CacheFileNamePrevious(size_t FileNamePositionToWorkFrom)
+unsigned int Direct2DRenderer::CacheFileNamePrevious()
 {
-	if (0U != FileNamePositionToWorkFrom)
+	std::list<IMAGEFILE>::iterator iteratorPrevious;
+
+	if (g_Files.begin() != g_IteratorCurrent)
 	{
-		g_FileNamePositionPrevious = FileNamePositionToWorkFrom - 1U;
+		iteratorPrevious = std::prev(g_IteratorCurrent);
 	}
 	else
 	{
-		g_FileNamePositionPrevious = g_Files.size() - 1U;
+		iteratorPrevious = --g_Files.end();
 	}
 
-	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), g_Files[g_FileNamePositionPrevious].FullPath.c_str(), m_pContextDst.Get(), &m_ImagePrevious);
+	HRESULT hr = LoadBitmapFromFile(m_pWICFactory.Get(), &(*iteratorPrevious), m_pContextDst.Get());
 
 	if (FAILED(hr))
 	{
 		if (HRESULT_FROM_WIN32(ERROR_FILE_NOT_FOUND) == hr)
 		{
-			return CacheFileNamePrevious((0U != FileNamePositionToWorkFrom)? FileNamePositionToWorkFrom - 1U : g_Files.size() - 1U);
+			return -E_NOTIMPL;
+			//return CacheFileNamePrevious((0U != FileNamePositionToWorkFrom)? FileNamePositionToWorkFrom - 1U : g_Files.size() - 1U);
 		}
 		else
 		{
@@ -1659,15 +1690,15 @@ HRESULT Direct2DRenderer::CalculateDrawRectangle(D2D1_RECT_F &drawRect)
     {
         // Calculate the area to display the image
         // Center the image if the client rectangle is larger
-		drawRect.left = (static_cast<FLOAT>(rcClient.right) - m_ImageCurrent.GifInfo.m_cxGifImagePixel) / 2.f;
-        drawRect.top = (static_cast<FLOAT>(rcClient.bottom) - m_ImageCurrent.GifInfo.m_cyGifImagePixel) / 2.f;
-        drawRect.right = drawRect.left + m_ImageCurrent.GifInfo.m_cxGifImagePixel;
-        drawRect.bottom = drawRect.top + m_ImageCurrent.GifInfo.m_cyGifImagePixel;
+		drawRect.left = (static_cast<FLOAT>(rcClient.right) - g_IteratorCurrent->GifInfo.m_cxGifImagePixel) / 2.f;
+        drawRect.top = (static_cast<FLOAT>(rcClient.bottom) - g_IteratorCurrent->GifInfo.m_cyGifImagePixel) / 2.f;
+        drawRect.right = drawRect.left + g_IteratorCurrent->GifInfo.m_cxGifImagePixel;
+        drawRect.bottom = drawRect.top + g_IteratorCurrent->GifInfo.m_cyGifImagePixel;
 
         // If the client area is resized to be smaller than the image size, scale
         // the image, and preserve the aspect ratio
-        FLOAT aspectRatio = static_cast<FLOAT>(m_ImageCurrent.GifInfo.m_cxGifImagePixel) /
-            static_cast<FLOAT>(m_ImageCurrent.GifInfo.m_cyGifImagePixel);
+        FLOAT aspectRatio = static_cast<FLOAT>(g_IteratorCurrent->GifInfo.m_cxGifImagePixel) /
+            static_cast<FLOAT>(g_IteratorCurrent->GifInfo.m_cyGifImagePixel);
 
         if (drawRect.left < 0)
         {
@@ -2345,17 +2376,23 @@ inline HRESULT Direct2DRenderer::GetFrameMetadata(IWICBitmapFrameDecode *pWICBit
 //
 HRESULT Direct2DRenderer::LoadBitmapFromFile(
 	IWICImagingFactory2 *pIWICFactory,
-	LPCWSTR FileName,
-	IWICColorContext *pContextDst,
-    IMAGE_INFO *ImageInfo
+	IMAGEFILE* imageFile,
+	IWICColorContext *pContextDst
     )
 {
-	ImageInfo->LoadResult = E_FAIL;
+	// If you've already previously loaded the image successfully
+	if (SUCCEEDED(imageFile->LoadResult))
+	{
+		// just return
+		return imageFile->LoadResult;
+	}
+
+	imageFile->LoadResult = E_FAIL;
 
 	Microsoft::WRL::ComPtr<IWICBitmapDecoder> pDecoder;
 
 	HRESULT hr = pIWICFactory->CreateDecoderFromFilename(
-        FileName,
+		imageFile->FullPath.c_str(),
         NULL,
         GENERIC_READ,
         WICDecodeMetadataCacheOnLoad,
@@ -2365,7 +2402,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 	if (FAILED(hr)) // try to load without caching metadata
 	{
 		hr = pIWICFactory->CreateDecoderFromFilename(
-			FileName,
+			imageFile->FullPath.c_str(),
 			NULL,
 			GENERIC_READ,
 			WICDecodeMetadataCacheOnDemand,
@@ -2373,34 +2410,34 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 			);
 	}
 
-	UINT NumberOfFrames = 0U;
+	UINT numberOfFrames = 0U;
 
 	if (SUCCEEDED(hr))
     {OutputDebugStringW(L"pIWICFactory->CreateDecoderFromFilename\n");
-        hr = pDecoder->GetFrameCount(&NumberOfFrames);
+        hr = pDecoder->GetFrameCount(&numberOfFrames);
     }
 
 	if (SUCCEEDED(hr))
     {
-		ImageInfo->aFrameInfo.resize(NumberOfFrames);
+		imageFile->aFrameInfo.resize(numberOfFrames);
     }
 	
 	if (SUCCEEDED(hr))
 	{
-		hr = pDecoder->GetContainerFormat(&(ImageInfo->guidContainerFormat));
+		hr = pDecoder->GetContainerFormat(&(imageFile->guidContainerFormat));
 	}
 
 	if (SUCCEEDED(hr))
 	{
-		if (ImageInfo->guidContainerFormat == GUID_ContainerFormatGif)
+		if (imageFile->guidContainerFormat == GUID_ContainerFormatGif)
 		{
-			hr = GIF_GetGlobalMetadata(pDecoder.Get(), ImageInfo); // if returns no size?
+			hr = GIF_GetGlobalMetadata(pDecoder.Get(), imageFile); // if returns no size?
 		}
 	}
 
 	if (SUCCEEDED(hr))
 	{OutputDebugStringW(L"pDecoder->GetFrameCount\n");
-		for (UINT i = 0U; i < ImageInfo->aFrameInfo.size(); i++)
+		for (UINT i = 0U; i < numberOfFrames; ++i)
 		{WCHAR buffer[260] = {0}; StringCchPrintfW(buffer, 260, L"Frame: %d\n", i); OutputDebugStringW(buffer);
 			
 			Microsoft::WRL::ComPtr<IWICBitmapFrameDecode> pSource;
@@ -2422,14 +2459,14 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 			if (SUCCEEDED(hr))
 			{OutputDebugStringW(L"Checked size\n");
-				if (GUID_ContainerFormatGif == ImageInfo->guidContainerFormat)
+				if (GUID_ContainerFormatGif == imageFile->guidContainerFormat)
 				{
-					hr = GIF_GetFrameMetadata(pSource.Get(), &(ImageInfo->aFrameInfo[i]));
-					ImageInfo->aFrameInfo[i].RotationFlag = 1U; // Not located in metadata
+					hr = GIF_GetFrameMetadata(pSource.Get(), &(imageFile->aFrameInfo[i]));
+					imageFile->aFrameInfo[i].RotationFlag = 1U; // Not located in metadata
 				}
 				else
 				{
-					hr = GetFrameMetadata(pSource.Get(), &(ImageInfo->aFrameInfo[i]));
+					hr = GetFrameMetadata(pSource.Get(), &(imageFile->aFrameInfo[i]));
 				}
 			}
 
@@ -2591,39 +2628,39 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 			if (SUCCEEDED(hr))
 			{
-				ImageInfo->aFrameInfo[i].pIWICBitmapSource.Swap(pIWICBitmapSource);
+				imageFile->aFrameInfo[i].pIWICBitmapSource.Swap(pIWICBitmapSource);
 			}
 
 			OutputDebugStringW(L"pConverter->Initialize\n");
 
 			if (SUCCEEDED(hr))
 			{
-				if (ImageInfo->guidContainerFormat != GUID_ContainerFormatGif)
+				if (imageFile->guidContainerFormat != GUID_ContainerFormatGif)
 				{
 					UINT uiWidth = 0U;
 					UINT uiHeight = 0U;
 
-					hr = ImageInfo->aFrameInfo[i].pIWICBitmapSource->GetSize(&uiWidth, &uiHeight);
+					hr = imageFile->aFrameInfo[i].pIWICBitmapSource->GetSize(&uiWidth, &uiHeight);
 
 					if (SUCCEEDED(hr))
 					{
-						ImageInfo->aFrameInfo[i].Size.width = static_cast<FLOAT>(uiWidth);
-						ImageInfo->aFrameInfo[i].Size.height = static_cast<FLOAT>(uiHeight);
+						imageFile->aFrameInfo[i].Size.width = static_cast<FLOAT>(uiWidth);
+						imageFile->aFrameInfo[i].Size.height = static_cast<FLOAT>(uiHeight);
 					}
 				}
 			}
 		}
 	}
 
-	if (GUID_ContainerFormatGif == ImageInfo->guidContainerFormat)
+	if (GUID_ContainerFormatGif == imageFile->guidContainerFormat)
 	{
-		for (UINT i = 0U; i < ImageInfo->aFrameInfo.size() && SUCCEEDED(hr); i++)
+		for (UINT i = 0U; i < imageFile->aFrameInfo.size() && SUCCEEDED(hr); i++)
 		{
 			Microsoft::WRL::ComPtr<IWICBitmap> pIWICBitmap;
 
 			hr = m_pWICFactory->CreateBitmap(
-				ImageInfo->GifInfo.Size.width,
-				ImageInfo->GifInfo.Size.height,
+				imageFile->GifInfo.Size.width,
+				imageFile->GifInfo.Size.height,
 				GUID_WICPixelFormat32bppPBGRA,
 				WICBitmapCacheOnDemand,
 				&pIWICBitmap
@@ -2656,11 +2693,11 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 					if (0U == i)
 					{
 						// Draw background
-						pID2D1RenderTarget->Clear(ImageInfo->GifInfo.BackgroundColor);
+						pID2D1RenderTarget->Clear(imageFile->GifInfo.BackgroundColor);
 					}
 					else
 					{
-						switch (ImageInfo->aFrameInfo[i - 1U].m_uFrameDisposal)
+						switch (imageFile->aFrameInfo[i - 1U].m_uFrameDisposal)
 						{
 						case DM_UNDEFINED:
 						case DM_NONE:
@@ -2669,7 +2706,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 							// Create a Direct2D bitmap from the WIC bitmap.
 							hr = pID2D1RenderTarget->CreateBitmapFromWicBitmap(
-								ImageInfo->aFrameInfo[i - 1U].pIWICBitmapSource.Get(),
+								imageFile->aFrameInfo[i - 1U].pIWICBitmapSource.Get(),
 								NULL,
 								&pID2D1Bitmap
 								);
@@ -2684,9 +2721,9 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 						case DM_BACKGROUND: // Clear the area covered by the current raw frame with background color
 						{
 							// Clip the render target to the size of the raw frame
-							pID2D1RenderTarget->PushAxisAlignedClip(&ImageInfo->aFrameInfo[i - 1U].m_framePosition, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
+							pID2D1RenderTarget->PushAxisAlignedClip(&imageFile->aFrameInfo[i - 1U].m_framePosition, D2D1_ANTIALIAS_MODE_PER_PRIMITIVE);
 
-							pID2D1RenderTarget->Clear(ImageInfo->GifInfo.BackgroundColor);
+							pID2D1RenderTarget->Clear(imageFile->GifInfo.BackgroundColor);
 
 							// Remove the clipping
 							pID2D1RenderTarget->PopAxisAlignedClip();
@@ -2701,7 +2738,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 								// Create a Direct2D bitmap from the WIC bitmap.
 								hr = pID2D1RenderTarget->CreateBitmapFromWicBitmap(
-									ImageInfo->aFrameInfo[i - 2U].pIWICBitmapSource.Get(),
+									imageFile->aFrameInfo[i - 2U].pIWICBitmapSource.Get(),
 									NULL,
 									&pID2D1Bitmap
 									);
@@ -2720,13 +2757,13 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 					// Create a Direct2D bitmap from the WIC bitmap.
 					hr = pID2D1RenderTarget->CreateBitmapFromWicBitmap(
-						ImageInfo->aFrameInfo[i].pIWICBitmapSource.Get(),
+						imageFile->aFrameInfo[i].pIWICBitmapSource.Get(),
 						NULL,
 						&pID2D1Bitmap
 						);
 
 					// Produce the frame
-					pID2D1RenderTarget->DrawBitmap(pID2D1Bitmap.Get(), ImageInfo->aFrameInfo[i].m_framePosition);
+					pID2D1RenderTarget->DrawBitmap(pID2D1Bitmap.Get(), imageFile->aFrameInfo[i].m_framePosition);
 
 					hr = pID2D1RenderTarget->EndDraw();
 
@@ -2738,7 +2775,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 
 						if (SUCCEEDED(hr))
 						{
-							ImageInfo->aFrameInfo[i].pIWICBitmapSource.Swap(pIWICBitmapSource);
+							imageFile->aFrameInfo[i].pIWICBitmapSource.Swap(pIWICBitmapSource);
 						}
 					}
 				}
@@ -2746,7 +2783,7 @@ HRESULT Direct2DRenderer::LoadBitmapFromFile(
 		}
 	}
 
-	ImageInfo->LoadResult = hr;
+	imageFile->LoadResult = hr;
 
     return hr;
 }
@@ -2980,7 +3017,7 @@ HRESULT Direct2DRenderer::SetTranslate(int x, int y)
 
 HRESULT Direct2DRenderer::SetCurrentErrorCode(HRESULT ErrorCode)
 {
-	m_ImageCurrent.LoadResult = ErrorCode;
+	g_IteratorCurrent->LoadResult = ErrorCode;
 
 	return OnRender();
 }
@@ -3025,21 +3062,21 @@ HRESULT Direct2DRenderer::ReloadAfterSort()
 	return hr;
 }
 
-HRESULT Direct2DRenderer::LoadBitmapCurrent(LPCWSTR FileName)
+HRESULT Direct2DRenderer::LoadBitmapCurrent()
 {
 	HRESULT hr = CreateDeviceResources();
-
-	if (SUCCEEDED(hr))
-	{
-		(void)LoadBitmapFromFile(m_pWICFactory.Get(), FileName, m_pContextDst.Get(), &m_ImageCurrent);
-
-		(void)ResetRenderingParameters();
-	}
 
 	if (hThreadCreateFileNameVectorFromDirectory)
 	{
 		hr = (WaitForSingleObject(hThreadCreateFileNameVectorFromDirectory, INFINITE) != WAIT_FAILED) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
 	}
+
+	if (SUCCEEDED(hr))
+	{
+		(void)LoadBitmapFromFile(m_pWICFactory.Get(), &(*g_IteratorCurrent), m_pContextDst.Get());
+
+		(void)ResetRenderingParameters();
+	}	
 
 	if (SUCCEEDED(hr))
 	{
@@ -3102,7 +3139,7 @@ HRESULT Direct2DRenderer::OnAnimationStartStop()
 
 	if (!AnimationRunning)
 	{
-		hr = SetTimer(m_hWnd, DELAY_TIMER_ID, m_ImageCurrent.aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL) ? S_OK : E_FAIL;
+		hr = SetTimer(m_hWnd, DELAY_TIMER_ID, g_IteratorCurrent->aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL) ? S_OK : E_FAIL;
 	}
 
 	if (SUCCEEDED(hr))
@@ -3119,19 +3156,6 @@ HRESULT Direct2DRenderer::OnDelete()
 
 	(void)WaitForSingleObject(hThreadCacheFileNameNext, INFINITE);
 	(void)WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
-
-	if (0U != g_FileNamePosition)
-	{
-		g_FileNamePositionPrevious = g_FileNamePosition - 1U;
-	}
-	else
-	{
-		g_FileNamePositionPrevious = g_Files.size() - 1U;
-	}
-
-	g_FileNamePosition = g_FileNamePositionNext;
-
-	m_ImageCurrent = m_ImageNext;
 
 	(void)ResetRenderingParameters();
 
@@ -3160,7 +3184,7 @@ HRESULT Direct2DRenderer::OnDelete()
 
 	if (SUCCEEDED(hr))
 	{
-		SetTitleBarText(); // ignore return value
+		hr = SetTitleBarText();
 	}
 
 	return hr;
@@ -3168,12 +3192,12 @@ HRESULT Direct2DRenderer::OnDelete()
 
 HRESULT Direct2DRenderer::OnFrameNext()
 {
-	if (1U == m_ImageCurrent.aFrameInfo.size() || AnimationRunning)
+	if (1U == g_IteratorCurrent->aFrameInfo.size() || AnimationRunning)
 	{
 		return S_OK;
 	}
 
-	if (m_FrameCurrent + 1U < m_ImageCurrent.aFrameInfo.size())
+	if (m_FrameCurrent + 1U < g_IteratorCurrent->aFrameInfo.size())
 	{
 		m_FrameCurrent = m_FrameCurrent + 1U;
 	}
@@ -3192,9 +3216,9 @@ HRESULT Direct2DRenderer::GIF_OnFrameNext()
 {
 	(void)KillTimer(m_hWnd, DELAY_TIMER_ID);
 
-	if (m_ImageCurrent.aFrameInfo.size() == 1U || !AnimationRunning || m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
+	if (g_IteratorCurrent->aFrameInfo.size() == 1U || !AnimationRunning || g_IteratorCurrent->aFrameInfo[m_FrameCurrent].UserInputFlag)
 	{
-		if (m_ImageCurrent.aFrameInfo[m_FrameCurrent].UserInputFlag)
+		if (g_IteratorCurrent->aFrameInfo[m_FrameCurrent].UserInputFlag)
 		{
 			(void)MessageBeep(MB_ICONASTERISK);
 		}
@@ -3204,7 +3228,7 @@ HRESULT Direct2DRenderer::GIF_OnFrameNext()
 		return S_OK;
 	}
 
-	if (m_FrameCurrent + 1U < m_ImageCurrent.aFrameInfo.size())
+	if (m_FrameCurrent + 1U < g_IteratorCurrent->aFrameInfo.size())
 	{
 		m_FrameCurrent = m_FrameCurrent + 1U;
 	}
@@ -3212,7 +3236,7 @@ HRESULT Direct2DRenderer::GIF_OnFrameNext()
 	{
 		m_uLoopNumber++;
 
-		if (m_ImageCurrent.GifInfo.m_uTotalLoopCount != 0U && m_uLoopNumber >= m_ImageCurrent.GifInfo.m_uTotalLoopCount)
+		if (g_IteratorCurrent->GifInfo.m_uTotalLoopCount != 0U && m_uLoopNumber >= g_IteratorCurrent->GifInfo.m_uTotalLoopCount)
 		{
 			return S_OK;
 		}
@@ -3224,14 +3248,14 @@ HRESULT Direct2DRenderer::GIF_OnFrameNext()
 
 	AnimationRunning = true;
 	// Set the timer according to the delay
-	(void)SetTimer(m_hWnd, DELAY_TIMER_ID, m_ImageCurrent.aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL);
+	(void)SetTimer(m_hWnd, DELAY_TIMER_ID, g_IteratorCurrent->aFrameInfo[m_FrameCurrent].m_uFrameDelay, NULL);
 
 	return OnRender();
 }
 
 HRESULT Direct2DRenderer::OnFramePrevious()
 {
-	if (m_ImageCurrent.aFrameInfo.size() == 1U || AnimationRunning)
+	if (g_IteratorCurrent->aFrameInfo.size() == 1U || AnimationRunning)
 	{
 		return S_OK;
 	}
@@ -3242,7 +3266,7 @@ HRESULT Direct2DRenderer::OnFramePrevious()
 	}
 	else
 	{
-		m_FrameCurrent = static_cast<UINT>(m_ImageCurrent.aFrameInfo.size()) - 1U;
+		m_FrameCurrent = static_cast<UINT>(g_IteratorCurrent->aFrameInfo.size()) - 1U;
 	}
 
 	HRESULT hr = SetTitleBarText();
@@ -3259,21 +3283,19 @@ HRESULT Direct2DRenderer::OnNext()
 	//TerminateThread(hThreadCacheFileNamePrevious, 0);
 	(void)WaitForSingleObject(hThreadCacheFileNamePrevious, INFINITE); // cludge
 
-	g_FileNamePositionPrevious = g_FileNamePosition;
-	g_FileNamePosition = g_FileNamePositionNext;
-
-	for (auto it = m_ImageCurrent.aFrameInfo.begin(); it != m_ImageCurrent.aFrameInfo.end(); ++it)
+	for (auto it = g_IteratorCurrent->aFrameInfo.begin(); it != g_IteratorCurrent->aFrameInfo.end(); ++it)
 	{
 		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
 	}
 
-	for (auto it = m_ImageNext.aFrameInfo.begin(); it != m_ImageNext.aFrameInfo.end(); ++it)
+	if (--g_Files.end() != g_IteratorCurrent)
 	{
-		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
+		std::advance(g_IteratorCurrent, 1);
 	}
-
-	m_ImagePrevious = m_ImageCurrent;
-	m_ImageCurrent = m_ImageNext;
+	else
+	{
+		g_IteratorCurrent = g_Files.begin();
+	}
 
 	(void)ResetRenderingParameters();
 
@@ -3316,21 +3338,19 @@ HRESULT Direct2DRenderer::OnPrevious()
 	//TerminateThread(hThreadCacheFileNameNext, 0);
 	(void)WaitForSingleObject(hThreadCacheFileNameNext, INFINITE); // cludge
 
-	g_FileNamePositionNext = g_FileNamePosition;
-	g_FileNamePosition = g_FileNamePositionPrevious;
-
-	for (auto it = m_ImageCurrent.aFrameInfo.begin(); it != m_ImageCurrent.aFrameInfo.end(); ++it)
+	for (auto it = g_IteratorCurrent->aFrameInfo.begin(); it != g_IteratorCurrent->aFrameInfo.end(); ++it)
 	{
 		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
 	}
 
-	for (auto it = m_ImagePrevious.aFrameInfo.begin(); it != m_ImagePrevious.aFrameInfo.end(); ++it)
+	if (g_Files.begin() != g_IteratorCurrent)
 	{
-		SafeRelease(it->pID2D1Bitmap1.GetAddressOf());
+		std::advance(g_IteratorCurrent, -1);
 	}
-
-	m_ImageNext = m_ImageCurrent;
-	m_ImageCurrent = m_ImagePrevious;
+	else
+	{
+		g_IteratorCurrent = --g_Files.end();
+	}
 
 	(void)ResetRenderingParameters();
 
@@ -3370,20 +3390,20 @@ HRESULT Direct2DRenderer::SetTitleBarText()
 	HRESULT hr = E_FAIL;
 
 	// If you successfully loaded the image
-	if (SUCCEEDED(m_ImageCurrent.LoadResult))
+	if (SUCCEEDED(g_IteratorCurrent->LoadResult))
 	{
 		short FileTitleLength = 0;
 
 		// if there is a title
-		if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.empty())
+		if (!g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Title.empty())
 		{
 			// get its length
-			FileTitleLength = static_cast<short>(m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.length());
+			FileTitleLength = static_cast<short>(g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Title.length());
 		}
 		else
 		{
 			// get the title from the path name
-			FileTitleLength = GetFileTitleW(g_Files[g_FileNamePosition].FullPath.c_str(), NULL, 0);
+			FileTitleLength = GetFileTitleW(g_IteratorCurrent->FullPath.c_str(), NULL, 0);
 			if (FileTitleLength <= 0)
 			{
 				return E_FAIL;
@@ -3393,27 +3413,27 @@ HRESULT Direct2DRenderer::SetTitleBarText()
 		std::wstring TitleBarText;
 
 		// If there is more than one frame
-		if (m_ImageCurrent.aFrameInfo.size() > 1U &&
+		if (g_IteratorCurrent->aFrameInfo.size() > 1U &&
 			// and the image is not a GIF
-			GUID_ContainerFormatGif != m_ImageCurrent.guidContainerFormat)
+			GUID_ContainerFormatGif != g_IteratorCurrent->guidContainerFormat)
 		{
 			std::wstring FramePart;
 
-			size_t FramePartLength = 8U/*space+bracket+"Frame"+space*/ + NumberOfDigits(static_cast<int32_t>(m_FrameCurrent)) + 1U + 1U/*slash*/ + NumberOfDigits(static_cast<int32_t>(m_ImageCurrent.aFrameInfo.size())) + 2U/*bracket+null char*/;
+			size_t FramePartLength = 8U/*space+bracket+"Frame"+space*/ + NumberOfDigits(static_cast<int32_t>(m_FrameCurrent)) + 1U + 1U/*slash*/ + NumberOfDigits(static_cast<int32_t>(g_IteratorCurrent->aFrameInfo.size())) + 2U/*bracket+null char*/;
 
 			FramePart.resize(FramePartLength);
 
-			hr = StringCchPrintfW(&FramePart[0], FramePartLength, L" (Frame %d/%d)", m_FrameCurrent + 1U, m_ImageCurrent.aFrameInfo.size());
+			hr = StringCchPrintfW(&FramePart[0], FramePartLength, L" (Frame %d/%d)", m_FrameCurrent + 1U, g_IteratorCurrent->aFrameInfo.size());
 
 			TitleBarText.resize(FileTitleLength + FramePartLength);
 
-			if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.empty())
+			if (!g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Title.empty())
 			{
-				TitleBarText = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title;
+				TitleBarText = g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Title;
 			}
 			else
 			{
-				(void)GetFileTitleW(g_Files[g_FileNamePosition].FullPath.c_str(), &TitleBarText[0], static_cast<WORD>(FileTitleLength));
+				(void)GetFileTitleW(g_IteratorCurrent->FullPath.c_str(), &TitleBarText[0], static_cast<WORD>(FileTitleLength));
 			}
 
 			TitleBarText = TitleBarText + FramePart;
@@ -3422,13 +3442,13 @@ HRESULT Direct2DRenderer::SetTitleBarText()
 		{
 			TitleBarText.resize(FileTitleLength);
 
-			if (!m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title.empty())
+			if (!g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Title.empty())
 			{
-				TitleBarText = m_ImageCurrent.aFrameInfo[m_FrameCurrent].Title;
+				TitleBarText = g_IteratorCurrent->aFrameInfo[m_FrameCurrent].Title;
 			}
 			else
 			{
-				(void)GetFileTitleW(g_Files[g_FileNamePosition].FullPath.c_str(), &TitleBarText[0], static_cast<WORD>(FileTitleLength));
+				(void)GetFileTitleW(g_IteratorCurrent->FullPath.c_str(), &TitleBarText[0], static_cast<WORD>(FileTitleLength));
 			}
 
 			hr = S_OK;
@@ -3629,7 +3649,7 @@ HRESULT Direct2DRenderer::EnumerateDecoders(IWICImagingFactory2 *pIWICFactory, C
 *                                                                 *
 ******************************************************************/
 
-inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecoder, IMAGE_INFO *ImageInfo)
+inline HRESULT Direct2DRenderer::GIF_GetGlobalMetadata(IWICBitmapDecoder *pDecoder, IMAGEFILE* ImageInfo)
 {
 	Microsoft::WRL::ComPtr<IWICMetadataQueryReader> pMetadataQueryReader;
 
@@ -4064,7 +4084,7 @@ if SUCCEEDED(hr)
 	
 	USHORT RotationFlagTemp = 0U;
 
-	switch (m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag)
+	switch (g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag)
 	{
 	case 1U:
 		{
@@ -4120,5 +4140,5 @@ if SUCCEEDED(hr)
 
 	if (SUCCEEDED(hr)) // if succeeded in rotating, commit change to the rotation flag
 	{
-		m_ImageCurrent.aFrameInfo[m_FrameCurrent].RotationFlag = RotationFlagTemp;
+		g_IteratorCurrent->aFrameInfo[m_FrameCurrent].RotationFlag = RotationFlagTemp;
 	}*/

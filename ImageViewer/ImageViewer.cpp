@@ -69,6 +69,14 @@ unsigned int __stdcall DeleteFileWithIFO(void* _ArgList)
  
 				if (SUCCEEDED(hr))
 				{
+					// Stop any running animation
+					(void)KillTimer(deletefilewithifo->hWnd, DELAY_TIMER_ID);
+
+					for (auto it = g_IteratorCurrent->aFrameInfo.begin(); it != g_IteratorCurrent->aFrameInfo.end(); ++it)
+					{
+						SafeRelease(it->pIWICBitmapSource.GetAddressOf());
+					}
+
 					// Perform the deleting operation
 					hr = pfo->PerformOperations(); // MSDN: "Note that if the operation was canceled by the user, this method can still return a success code" Emphasis on CAN
 					
@@ -947,7 +955,7 @@ BOOL SystemTimeToVariantTimeWithMilliseconds(__in SYSTEMTIME st, __out double *d
     return retVal;
 }
 
-bool FilesSortByDateModified(FILESTRUCT &lhs, FILESTRUCT &rhs)
+bool FilesSortByDateModified(IMAGEFILE &lhs, IMAGEFILE &rhs)
 {
 	double VariantTimeLHS = 0.0;
 	SystemTimeToVariantTimeWithMilliseconds(lhs.DateModified, &VariantTimeLHS);
@@ -958,12 +966,12 @@ bool FilesSortByDateModified(FILESTRUCT &lhs, FILESTRUCT &rhs)
 	return (VariantTimeLHS < VariantTimeRHS);
 }
 
-bool FilesSortBySize(FILESTRUCT &lhs, FILESTRUCT &rhs)
+bool FilesSortBySize(IMAGEFILE &lhs, IMAGEFILE &rhs)
 {
 	return (lhs.SizeInBytes < rhs.SizeInBytes);
 }
 
-bool FilesSortByNameNatural(FILESTRUCT &lhs, FILESTRUCT &rhs)
+bool FilesSortByNameNatural(IMAGEFILE &lhs, IMAGEFILE &rhs)
 {
 	return (StrCmpLogicalW(lhs.FullPath.c_str(), rhs.FullPath.c_str()) < 0);
 }
@@ -980,7 +988,7 @@ bool NaturalSort(LPCWSTR &lhs, LPCWSTR &rhs)
 
 struct FILENAMEVECTORFROMDIRECTORY
 {
-	std::vector<FILESTRUCT> * Files;
+	std::list<IMAGEFILE> * Files;
 	std::wstring * Directory;
 	LPWSTR *ArrayOfFileExtensions;
 	UINT NumberOfFileExtensions;
@@ -1002,7 +1010,8 @@ unsigned int __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 	UINT ID = 0U;
 	FILETIME FileTimeModfied = { 0 };
 	SYSTEMTIME SystemTimeModified = { 0 };
-	FILESTRUCT File = { 0 };
+	IMAGEFILE File = IMAGEFILE();
+	UINT fileNamePosition = 0U;
 
 	HKEY Advanced = nullptr;
 
@@ -1123,14 +1132,12 @@ unsigned int __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 								FileNameVectorFromDirectory.Files->push_back(File);
 
 								// keep comparing if fileposition is legitimately 0
-								if (0U == g_FileNamePosition && (0 == wcscmp(g_FileName.c_str(), wFullFileName)))
+								if (0U == fileNamePosition && (0 == wcscmp(g_FileName.c_str(), wFullFileName)))
 								{
-									g_FileNamePosition = ID;
+									fileNamePosition = ID;
 								}
 
 								ID++;
-
-								//FileNameVectorFromDirectory.FileNameVector->push_back(wFullFileName);
 
 								break;
 							}
@@ -1153,7 +1160,9 @@ unsigned int __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 		}
 	}
 
-	std::sort(FileNameVectorFromDirectory.Files->begin(), FileNameVectorFromDirectory.Files->end(), &FilesSortByNameNatural); // always sort by name if in new directory
+	// always sort by name if in new directory
+	FileNameVectorFromDirectory.Files->sort(&FilesSortByNameNatural);
+
 	g_SortByCurrent = SORTBYNAME;
 
 	/*switch (g_SortByCurrent)
@@ -1175,11 +1184,12 @@ unsigned int __stdcall CreateFileNameVectorFromDirectory(void* _ArgList)
 		break;
 	}*/
 
-	for (size_t i = 0; i < FileNameVectorFromDirectory.Files->size(); i++)
+	for (auto it = FileNameVectorFromDirectory.Files->begin(); it != FileNameVectorFromDirectory.Files->end(); ++it)
 	{
-		if (g_FileNamePosition == FileNameVectorFromDirectory.Files->at(i).ID)
+		if (fileNamePosition == it->ID)
 		{
-			g_FileNamePosition = i;
+			g_IteratorCurrent = it;
+
 			break;
 		}
 	}
@@ -1743,7 +1753,7 @@ void _OnCommand_ID_FILE_COPY(HWND hWnd)
 {
 	WCHAR buffer[PATHCCH_MAX_CCH] = {0};
 
-	HRESULT hr = StringCchCopyW(buffer, PATHCCH_MAX_CCH, g_Files[g_FileNamePosition].FullPath.c_str());
+	HRESULT hr = StringCchCopyW(buffer, PATHCCH_MAX_CCH, g_IteratorCurrent->FullPath.c_str());
 
 	if SUCCEEDED(hr)
 	{
@@ -2097,7 +2107,7 @@ void _OnCommand_ID_FILE_DELETE(HWND hWnd)
 		g_BlockMovement = true;
 
 		g_deletefilewithifo.hWnd = hWnd;
-		g_deletefilewithifo.FileName = &g_Files[g_FileNamePosition].FullPath;
+		g_deletefilewithifo.FileName = &g_IteratorCurrent->FullPath;
 		g_deletefilewithifo.Permanent = false;
 		g_deletefilewithifo.Silent = false;
 
@@ -2124,7 +2134,7 @@ void _OnCommand_ID_FILE_DELETEPERMANENTLY(HWND hWnd)
 		g_BlockMovement = true;
 
 		g_deletefilewithifo.hWnd = hWnd;
-		g_deletefilewithifo.FileName = &g_Files[g_FileNamePosition].FullPath;
+		g_deletefilewithifo.FileName = &g_IteratorCurrent->FullPath;
 		g_deletefilewithifo.Permanent = true;
 		g_deletefilewithifo.Silent = false;
 
@@ -2153,18 +2163,13 @@ void _OnCommand_ID_FILE_FIRSTFILE(HWND hWnd)
 {
 	if (!g_BlockMovement)
 	{
-		size_t FileNamePositionFirst = g_SortByAscending ? 0U : g_Files.size() - 1U;
+		g_IteratorCurrent = g_SortByAscending ? g_Files.begin() : --g_Files.end();
 
-		if (g_FileNamePosition != FileNamePositionFirst)
+		HRESULT hr = renderer.LoadBitmapCurrent();
+
+		if (SUCCEEDED(hr))
 		{
-			g_FileNamePosition = FileNamePositionFirst;
-
-			HRESULT hr = renderer.LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
-
-			if (SUCCEEDED(hr))
-			{
-				(void)InvalidateRect(hWnd, NULL, FALSE);
-			}
+			(void)InvalidateRect(hWnd, NULL, FALSE);
 		}
 	}
 }
@@ -2248,18 +2253,13 @@ void _OnCommand_ID_FILE_LASTFILE(HWND hWnd)
 {
 	if (!g_BlockMovement)
 	{
-		size_t FileNamePositionLast = g_SortByAscending ? g_Files.size() - 1U : 0U;
+		g_IteratorCurrent = g_SortByAscending ? --g_Files.end() : g_Files.begin();
 
-		if (g_FileNamePosition != FileNamePositionLast)
+		HRESULT hr = renderer.LoadBitmapCurrent();
+
+		if (SUCCEEDED(hr))
 		{
-			g_FileNamePosition = FileNamePositionLast;
-
-			HRESULT hr = renderer.LoadBitmapCurrent(g_Files[g_FileNamePosition].FullPath.c_str());
-
-			if (SUCCEEDED(hr))
-			{
-				(void)InvalidateRect(hWnd, nullptr, FALSE);
-			}
+			(void)InvalidateRect(hWnd, nullptr, FALSE);
 		}
 	}
 }
@@ -2268,34 +2268,32 @@ void _OnCommand_ID_FILE_NEW(HWND hWnd)
 {
 	if (!g_BlockMovement)
 	{
-		size_t NumberOfFiles = g_Files.size();
-
-		if (NumberOfFiles > 1)
+		if (g_Files.size() > 1U)
 		{
-			size_t FileNamePositionTemp = g_FileNamePosition;
+			size_t counter = 0U;
 
-			size_t counter = 0;
-
-			while (counter != NumberOfFiles)
+			while (counter != g_Files.size())
 			{
-				if ((FileNamePositionTemp + 1U) < NumberOfFiles)
+				std::list<IMAGEFILE>::iterator iteratorNext;
+
+				if (--g_Files.end() != g_IteratorCurrent)
 				{
-					FileNamePositionTemp++;
+					iteratorNext = std::next(g_IteratorCurrent);
 				}
 				else
 				{
-					FileNamePositionTemp = 0U;
+					iteratorNext = g_Files.begin();
 				}
 
 				// Use GetFileAttributes instead of PathFileExists to handle long file names
-				DWORD fileAttributes = GetFileAttributesW(g_Files[FileNamePositionTemp].FullPath.c_str());
+				DWORD fileAttributes = GetFileAttributesW(iteratorNext->FullPath.c_str());
 
 				if (INVALID_FILE_ATTRIBUTES != fileAttributes && !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 				{ // ShellExecuteW strictly needs STA model of COM http://support.microsoft.com/default.aspx?scid=287087
 					(void)ShellExecuteW(
 						hWnd, // __in_opt  HWND hwnd
 						L"open", // __in_opt LPCTSTR lpOperation
-						g_Files[FileNamePositionTemp].FullPath.c_str(), // __in LPCTSTR lpFile
+						iteratorNext->FullPath.c_str(), // __in LPCTSTR lpFile
 						NULL, // __in_opt LPCTSTR lpParameters
 						NULL, // __in_opt LPCTSTR lpDirectory
 						SW_MAXIMIZE // __in INT nShowCmd
@@ -2315,16 +2313,18 @@ void _OnCommand_ID_FILE_NEXT(HWND /*hWnd*/)
 	{
 		if (g_Files.size() > 1)
 		{
+			HRESULT hr = E_FAIL;
+
 			if (g_SortByAscending)
 			{
-				HRESULT hr = renderer.OnNext();
-				if (FAILED(hr)) { ErrorDescription(hr); }
+				hr = renderer.OnNext();
 			}
 			else
 			{
-				HRESULT hr = renderer.OnPrevious();
-				if (FAILED(hr)) { ErrorDescription(hr); }
+				hr = renderer.OnPrevious();
 			}
+
+			if (FAILED(hr)) { ErrorDescription(hr); }
 
 			(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
 		}
@@ -2359,7 +2359,7 @@ void _OnCommand_ID_FILE_OPEN(HWND hWnd)
 
 void _OnCommand_ID_FILE_OPENFILELOCATION(HWND /*hWnd*/)
 {
-	ITEMIDLIST __unaligned *pidl = ILCreateFromPathW(g_Files[g_FileNamePosition].FullPath.c_str());
+	ITEMIDLIST __unaligned *pidl = ILCreateFromPathW(g_IteratorCurrent->FullPath.c_str());
 
 	if (pidl)
 	{
@@ -2382,14 +2382,18 @@ void _OnCommand_ID_FILE_PREVIOUS(HWND /*hWnd*/)
 	{
 		if (g_Files.size() > 1)
 		{
+			HRESULT hr = E_FAIL;
+
 			if (g_SortByAscending)
 			{
-				(void)renderer.OnPrevious();
+				hr = renderer.OnPrevious();
 			}
 			else
 			{
-				(void)renderer.OnNext();
+				hr = renderer.OnNext();
 			}
+
+			if (FAILED(hr)) { ErrorDescription(hr); }
 
 			(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
 		}
@@ -2401,7 +2405,7 @@ void _OnCommand_ID_FILE_PROPERTIES(HWND hWnd)
 	if (!SHObjectProperties(
 		hWnd, // __in  HWND hwnd
 		SHOP_FILEPATH, // __in  DWORD shopObjectType
-		g_Files[g_FileNamePosition].FullPath.c_str(), // __in  PCWSTR pszObjectName
+		g_IteratorCurrent->FullPath.c_str(), // __in  PCWSTR pszObjectName
 		L"Details" // __in  PCWSTR pszPropertyPage
 		))
 	{
@@ -2448,7 +2452,7 @@ void _OnCommand_ID_FILE_SCALETOWINDOW(HWND /*hWnd*/)
 //WPSTYLE_CENTER; // Center the wallpaper image in its original size, filling the remaining area with a solid background color if image is smaller than screen or cropping image if image is larger.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CENTER(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_CENTER);
+	HRESULT hr = SetAsDesktopBackground(&g_IteratorCurrent->FullPath, WPSTYLE_CENTER);
 
 	if (FAILED(hr))
 	{
@@ -2459,7 +2463,7 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CENTER(HWND /*hWnd*/)
 //WPSTYLE_CROPTOFIT; // Windows 7 and later only. Enlarge or shrink the image to fill the screen, retaining the aspect ratio of the original image. If necessary, the image is cropped either on the top and bottom or on the left and right as necessary to fit the screen.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CROPTOFIT(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_CROPTOFIT);
+	HRESULT hr = SetAsDesktopBackground(&g_IteratorCurrent->FullPath, WPSTYLE_CROPTOFIT);
 
 	if (FAILED(hr))
 	{
@@ -2470,7 +2474,7 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_CROPTOFIT(HWND /*hWnd*/)
 //WPSTYLE_KEEPASPECT; // Windows 7 and later only. Enlarge or shrink the image to fill the screen, retaining the aspect ratio of the original image. If necessary, the image is padded either on the top and bottom or on the right and left with the background color to fill any screen area not covered by the image.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_KEEPASPECT(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_KEEPASPECT);
+	HRESULT hr = SetAsDesktopBackground(&g_IteratorCurrent->FullPath, WPSTYLE_KEEPASPECT);
 
 	if (FAILED(hr))
 	{
@@ -2481,7 +2485,7 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_KEEPASPECT(HWND /*hWnd*/)
 //WPSTYLE_STRETCH; // Stretch the image to cover the full screen. This can result in distortion of the image as the image's aspect ratio is not retained.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_STRETCH(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_STRETCH);
+	HRESULT hr = SetAsDesktopBackground(&g_IteratorCurrent->FullPath, WPSTYLE_STRETCH);
 
 	if (FAILED(hr))
 	{
@@ -2492,7 +2496,7 @@ void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_STRETCH(HWND /*hWnd*/)
 //WPSTYLE_TILE; // Tile the wallpaper image, starting in the upper left corner of the screen. This uses the image in its original size.
 void _OnCommand_ID_FILE_SETASDESKTOPBACKGROUND_TILE(HWND /*hWnd*/)
 {
-	HRESULT hr = SetAsDesktopBackground(&g_Files[g_FileNamePosition].FullPath, WPSTYLE_TILE);
+	HRESULT hr = SetAsDesktopBackground(&g_IteratorCurrent->FullPath, WPSTYLE_TILE);
 
 	if (FAILED(hr))
 	{
@@ -2507,34 +2511,35 @@ void _OnCommand_ID_FILE_SORT(HWND /*hWnd*/, SORTBY SortBy)
 		return;
 	}
 
-	UINT IDOld = g_Files[g_FileNamePosition].ID;
+	const UINT IDOld = g_IteratorCurrent->ID;
 
 	switch (SortBy)
 	{
 	case SORTBYDATEMODIFIED:
 		{
-			std::sort(g_Files.begin(), g_Files.end(), &FilesSortByDateModified);
+			g_Files.sort(&FilesSortByDateModified);
 		}
 		break;
 	case SORTBYNAME:
 		{
-			std::sort(g_Files.begin(), g_Files.end(), &FilesSortByNameNatural);
+			g_Files.sort(&FilesSortByNameNatural);
 		}
 		break;
 	case SORTBYSIZE:
 		{
-			std::sort(g_Files.begin(), g_Files.end(), &FilesSortBySize);
+			g_Files.sort(&FilesSortBySize);
 		}
 		break;
 	}
 
 	g_SortByCurrent = SortBy;
 	
-	for (size_t i = 0U; i < g_Files.size(); i++)
+	for (auto it = g_Files.begin(); it != g_Files.end(); ++it)
 	{
-		if (IDOld == g_Files[i].ID)
+		if (IDOld == it->ID)
 		{
-			g_FileNamePosition = i;
+			g_IteratorCurrent = it;
+
 			break;
 		}
 	}
@@ -2598,8 +2603,6 @@ void _OnCommand_RETURNEDFROMCOMMONITEMDIALOGOPEN(HWND hWnd)
 	{
 		g_Files.clear();
 
-		g_FileNamePosition = 0U;
-
 		g_Directories.clear();
 
 		if (hRightClickMenuTitleBar)
@@ -2628,7 +2631,7 @@ void _OnCommand_RETURNEDFROMCOMMONITEMDIALOGOPEN(HWND hWnd)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.LoadBitmapCurrent(g_FileName.c_str());
+		hr = renderer.LoadBitmapCurrent();
 	}
 
 	if (SUCCEEDED(hr))
@@ -2646,8 +2649,15 @@ void _OnCommand_RETURNEDFROMDELETEFILEWITHIFO(HWND /*hWnd*/, UINT codeNotify)
 {
 	if (0U == codeNotify)
 	{
-		if (g_Files.size() > 1)
+		if (g_Files.size() > 1U)
 		{
+			g_IteratorCurrent = g_Files.erase(g_IteratorCurrent);
+
+			if (g_Files.end() == g_IteratorCurrent)
+			{
+				g_IteratorCurrent = g_Files.begin();
+			}
+
 			HRESULT hr = renderer.OnDelete();
 			if (FAILED(hr)) { ErrorDescription(hr); }
 		}
@@ -2769,7 +2779,7 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.LoadBitmapCurrent(g_FileName.c_str());
+		hr = renderer.LoadBitmapCurrent();
 	}
 
 	if (SUCCEEDED(hr))

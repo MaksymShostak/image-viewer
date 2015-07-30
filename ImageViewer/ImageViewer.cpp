@@ -1,11 +1,6 @@
 // ImageViewer.cpp : Defines the entry point for the application.
 #include "stdafx.h"
 #include "ImageViewer.h"
-#include "Direct2DRenderer.h"
-#include "HRESULT.h"
-#include <VersionHelpers.h> //IsWindows7OrGreater
-
-Direct2DRenderer renderer;
 
 unsigned int __stdcall DeleteFileWithIFO(void* _ArgList)
 {
@@ -522,7 +517,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 	HACCEL hAccelTable = nullptr;
 
 	// A correct application can continue to run even if this call fails
-	(void)HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0);
+	(void)HeapSetInformation(nullptr, HeapEnableTerminationOnCorruption, nullptr, 0);
 
 	//GetPhysicalProcessorCount(&g_NumberOfProcessors);
 
@@ -541,14 +536,16 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
         return EXIT_FAILURE;
     }
 
-	hr = renderer.CreateDeviceIndependentResources();
+	renderer = new Direct2DRenderer();
+
+	hr = renderer->CreateDeviceIndependentResources();
 	if (FAILED(hr))
     {
 		ErrorDescription(hr);
         return EXIT_FAILURE;
     }
 
-	hr = renderer.EnumerateDecoders(nullptr, &cFileTypes);
+	hr = renderer->EnumerateDecoders(nullptr, &cFileTypes);
 	if (FAILED(hr))
     {
 		ErrorDescription(hr);
@@ -557,7 +554,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 
 	FilterSpec = new COMDLG_FILTERSPEC[cFileTypes];
 
-	hr = renderer.EnumerateDecoders(&FilterSpec, &cFileTypes);
+	hr = renderer->EnumerateDecoders(&FilterSpec, &cFileTypes);
 	if (FAILED(hr))
     {
 		ErrorDescription(hr);
@@ -822,19 +819,45 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE /*hPrevInstance*/, LPWSTR /
 
 	(void)CloseHandle(hThreadCreateFileNameVectorFromDirectory);
 
-	// do not delete the strings in each element as this is taken care of by the destructor of Direct2DRenderer (where the strings are owned)
-	//delete [] FilterSpec;
-
-	/*for (UINT i = 0U; i < NumberOfFileExtensions; i++)
-	{
-		delete [] ArrayOfFileExtensions[i];
-	}
-	delete [] ArrayOfFileExtensions;*/
+	
 
 	/*for (UINT i = 0U; i < g_Files.size(); i++)
 	{
 		DeleteObject(g_Files[i].Thumbnail);
 	}*/
+
+	g_FileName.clear();
+	FileDirectory.clear();
+
+	for (auto it = g_Directories.begin(); it != g_Directories.end(); ++it)
+	{
+		it->clear();
+	}
+
+	g_Directories.clear();
+
+	for (auto it = g_Files.begin(); it != g_Files.end(); ++it)
+	{
+		for (auto itFrames = it->aFrameInfo.begin(); itFrames != it->aFrameInfo.end(); ++itFrames)
+		{
+			SafeRelease(itFrames->pID2D1Bitmap1.GetAddressOf());
+			SafeRelease(itFrames->pIWICBitmapSource.GetAddressOf());
+			itFrames->Title.clear();
+		}
+
+		it->FullPath.clear();
+	}
+
+	// do not delete the strings in each element as this is taken care of by the destructor of Direct2DRenderer (where the strings are owned)
+	//delete [] FilterSpec;
+
+	/*for (UINT i = 0U; i < NumberOfFileExtensions; i++)
+	{
+	delete [] ArrayOfFileExtensions[i];
+	}
+	delete [] ArrayOfFileExtensions;*/
+
+	delete renderer;
 
 	if (hRightClickMenu)
 	{
@@ -1703,23 +1726,23 @@ void _OnCommand(HWND hWnd, int id, HWND /*hwndCtl*/, UINT codeNotify)
 
 void _OnCommand_ID_FILE_ACTUALSIZE(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.ActualSize();
+	HRESULT hr = renderer->ActualSize();
 
 	if (SUCCEEDED(hr))
 	{
-		(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+		(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 	}
 }
 
 void _OnCommand_ID_FILE_ANIMATIONSTARTSTOP(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.OnAnimationStartStop();
+	HRESULT hr = renderer->OnAnimationStartStop();
 	if (FAILED(hr)) { ErrorDescription(hr); }
 }
 
 void _OnCommand_ID_FILE_AUTOROTATE(HWND /*hWnd*/)
 {
-	if (renderer.RotateAutoEnabled())
+	if (renderer->RotateAutoEnabled())
 	{
 		// If the CTRL key is down
 		if (GetKeyState(VK_CONTROL) & 0x8000)
@@ -1732,7 +1755,7 @@ void _OnCommand_ID_FILE_AUTOROTATE(HWND /*hWnd*/)
 				renderer.Rotate(true);
 			}*/
 		}
-		HRESULT hr = renderer.Rotate(true);
+		HRESULT hr = renderer->Rotate(true);
 		if (FAILED(hr)) { ErrorDescription(hr); }
 	}
 	else
@@ -2165,7 +2188,7 @@ void _OnCommand_ID_FILE_FIRSTFILE(HWND hWnd)
 	{
 		g_IteratorCurrent = g_SortByAscending ? g_Files.begin() : --g_Files.end();
 
-		HRESULT hr = renderer.LoadBitmapCurrent();
+		HRESULT hr = renderer->LoadBitmapCurrent();
 
 		if (SUCCEEDED(hr))
 		{
@@ -2176,23 +2199,23 @@ void _OnCommand_ID_FILE_FIRSTFILE(HWND hWnd)
 
 void _OnCommand_ID_FILE_FITTOWINDOW(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.FitToWindow();
+	HRESULT hr = renderer->FitToWindow();
 
 	if (SUCCEEDED(hr))
 	{
-		(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+		(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 	}
 }
 
 void _OnCommand_ID_FILE_FRAMENEXT(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.OnFrameNext();
+	HRESULT hr = renderer->OnFrameNext();
 	if (FAILED(hr)) { ErrorDescription(hr); }
 }
 
 void _OnCommand_ID_FILE_FRAMEPREVIOUS(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.OnFramePrevious();
+	HRESULT hr = renderer->OnFramePrevious();
 	if (FAILED(hr)) { ErrorDescription(hr); }
 }
 
@@ -2255,7 +2278,7 @@ void _OnCommand_ID_FILE_LASTFILE(HWND hWnd)
 	{
 		g_IteratorCurrent = g_SortByAscending ? --g_Files.end() : g_Files.begin();
 
-		HRESULT hr = renderer.LoadBitmapCurrent();
+		HRESULT hr = renderer->LoadBitmapCurrent();
 
 		if (SUCCEEDED(hr))
 		{
@@ -2317,16 +2340,16 @@ void _OnCommand_ID_FILE_NEXT(HWND /*hWnd*/)
 
 			if (g_SortByAscending)
 			{
-				hr = renderer.OnNext();
+				hr = renderer->OnNext();
 			}
 			else
 			{
-				hr = renderer.OnPrevious();
+				hr = renderer->OnPrevious();
 			}
 
 			if (FAILED(hr)) { ErrorDescription(hr); }
 
-			(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+			(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 		}
 	}
 }
@@ -2386,16 +2409,16 @@ void _OnCommand_ID_FILE_PREVIOUS(HWND /*hWnd*/)
 
 			if (g_SortByAscending)
 			{
-				hr = renderer.OnPrevious();
+				hr = renderer->OnPrevious();
 			}
 			else
 			{
-				hr = renderer.OnNext();
+				hr = renderer->OnNext();
 			}
 
 			if (FAILED(hr)) { ErrorDescription(hr); }
 
-			(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+			(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 		}
 	}
 }
@@ -2415,9 +2438,9 @@ void _OnCommand_ID_FILE_PROPERTIES(HWND hWnd)
 
 void _OnCommand_ID_FILE_ROTATECLOCKWISE(HWND /*hWnd*/)
 {
-	if (renderer.RotateEnabled())
+	if (renderer->RotateEnabled())
 	{
-		HRESULT hr = renderer.Rotate(true);
+		HRESULT hr = renderer->Rotate(true);
 
 		if (FAILED(hr) && WINCODEC_ERR_ABORTED != hr) // if rotation aborted by user, treat as normal exit
 		{
@@ -2428,9 +2451,9 @@ void _OnCommand_ID_FILE_ROTATECLOCKWISE(HWND /*hWnd*/)
 
 void _OnCommand_ID_FILE_ROTATECOUNTERCLOCKWISE(HWND /*hWnd*/)
 {
-	if (renderer.RotateEnabled())
+	if (renderer->RotateEnabled())
 	{
-		HRESULT hr = renderer.Rotate(false);
+		HRESULT hr = renderer->Rotate(false);
 
 		if (FAILED(hr) && WINCODEC_ERR_ABORTED != hr) // if rotation aborted by user, treat as normal exit
 		{
@@ -2441,11 +2464,11 @@ void _OnCommand_ID_FILE_ROTATECOUNTERCLOCKWISE(HWND /*hWnd*/)
 
 void _OnCommand_ID_FILE_SCALETOWINDOW(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.ScaleToWindow();
+	HRESULT hr = renderer->ScaleToWindow();
 
 	if (SUCCEEDED(hr))
 	{
-		(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+		(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 	}
 }
 
@@ -2544,7 +2567,7 @@ void _OnCommand_ID_FILE_SORT(HWND /*hWnd*/, SORTBY SortBy)
 		}
 	}
 
-	HRESULT hr = renderer.ReloadAfterSort();
+	HRESULT hr = renderer->ReloadAfterSort();
 	if (FAILED(hr)) { ErrorDescription(hr); }
 }
 void _OnCommand_ID_FILE_SORTBYASCENDING(HWND /*hWnd*/)
@@ -2565,7 +2588,7 @@ void _OnCommand_ID_FILE_SORTBYDESCENDING(HWND /*hWnd*/)
 
 void _OnCommand_ID_FILE_TOGGLEBACKGROUNDCOLOR(HWND /*hWnd*/)
 {
-	HRESULT hr = renderer.ToggleBackgroundColor();
+	HRESULT hr = renderer->ToggleBackgroundColor();
 	if (FAILED(hr)) { ErrorDescription(hr); }
 }
 
@@ -2631,7 +2654,7 @@ void _OnCommand_RETURNEDFROMCOMMONITEMDIALOGOPEN(HWND hWnd)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.LoadBitmapCurrent();
+		hr = renderer->LoadBitmapCurrent();
 	}
 
 	if (SUCCEEDED(hr))
@@ -2658,12 +2681,12 @@ void _OnCommand_RETURNEDFROMDELETEFILEWITHIFO(HWND /*hWnd*/, UINT codeNotify)
 				g_IteratorCurrent = g_Files.begin();
 			}
 
-			HRESULT hr = renderer.OnDelete();
+			HRESULT hr = renderer->OnDelete();
 			if (FAILED(hr)) { ErrorDescription(hr); }
 		}
 		else
 		{
-			HRESULT hr = renderer.SetCurrentErrorCode(ERROR_NO_MORE_FILES);
+			HRESULT hr = renderer->SetCurrentErrorCode(ERROR_NO_MORE_FILES);
 			if (FAILED(hr)) { ErrorDescription(hr); }
 		}
 	}
@@ -2750,7 +2773,7 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.SetHwnd(hWnd);
+		hr = renderer->SetHwnd(hWnd);
 	}
 
 	if (0 == g_Files.size()) // if FileNames uninitialised
@@ -2779,7 +2802,7 @@ BOOL _OnCreate(HWND hWnd, LPCREATESTRUCT /*lpCreateStruct*/)
 
 	if (SUCCEEDED(hr))
 	{
-		hr = renderer.LoadBitmapCurrent();
+		hr = renderer->LoadBitmapCurrent();
 	}
 
 	if (SUCCEEDED(hr))
@@ -2846,7 +2869,7 @@ void _OnLButtonDown(HWND hWnd, BOOL /*fDoubleClick*/, int x, int y, UINT /*keyFl
 {
 	(void)SetCapture(hWnd);
 
-	if (renderer.Pannable)
+	if (renderer->Pannable)
 	{
 		(void)SetCursor(hCursorHandClosed);
 
@@ -2866,23 +2889,23 @@ void _OnLButtonUp(HWND /*hWnd*/, int /*x*/, int /*y*/, UINT /*keyFlags*/)
 {
 	(void)ReleaseCapture();
 
-	if (renderer.Pannable)
+	if (renderer->Pannable)
 	{
 		(void)SetCursor(hCursorHand);
 
 		(void)ClipCursor(nullptr);
 
-		renderer.SetDragEnd();
+		renderer->SetDragEnd();
 	}
 }
 
 void _OnMouseMove(HWND /*hWnd*/, int x, int y, UINT keyFlags)
 {
-	if (renderer.Pannable)
+	if (renderer->Pannable)
 	{
 		if (keyFlags & MK_LBUTTON)
 		{
-			HRESULT hr = renderer.SetTranslate(x - DragStart.x, y - DragStart.y);
+			HRESULT hr = renderer->SetTranslate(x - DragStart.x, y - DragStart.y);
 			if (FAILED(hr)) { ErrorDescription(hr); }
 		}
 	}
@@ -2912,16 +2935,16 @@ void _OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT /*fwKeys*/)
 					{
 						if (zDeltaAccumulator > 0)
 						{
-							HRESULT hr = renderer.ZoomIn((UINT)pt.x, (UINT)pt.y);
+							HRESULT hr = renderer->ZoomIn((UINT)pt.x, (UINT)pt.y);
 							if (FAILED(hr)) { ErrorDescription(hr); }
 						}
 						else if (zDeltaAccumulator < 0)
 						{
-							HRESULT hr = renderer.ZoomOut((UINT)pt.x, (UINT)pt.y);
+							HRESULT hr = renderer->ZoomOut((UINT)pt.x, (UINT)pt.y);
 							if (FAILED(hr)) { ErrorDescription(hr); }
 						}
 
-						(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+						(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 					}
 					zDeltaAccumulator = zDeltaAccumulator - 120*nScroll;
 				}
@@ -2932,7 +2955,7 @@ void _OnMouseWheel(HWND hWnd, int xPos, int yPos, int zDelta, UINT /*fwKeys*/)
 
 void _OnPaint(HWND hWnd)
 {
-	if (SUCCEEDED(renderer.OnRender()))
+	if (SUCCEEDED(renderer->OnRender()))
 	{
 		(void)ValidateRect(hWnd, NULL);
 	}
@@ -2947,7 +2970,7 @@ void _OnSize(HWND /*hWnd*/, UINT state, int cx, int cy)
 {
 	if (SIZE_MINIMIZED != state /*&& SIZE_RESTORED != state*/)
 	{
-		HRESULT hr = renderer.OnResize(cx, cy);
+		HRESULT hr = renderer->OnResize(cx, cy);
 		// Ignore DXGI_ERROR_INVALID_CALL as this simply means all the device resources were re-created
 		if (FAILED(hr) && hr != DXGI_ERROR_INVALID_CALL)
 		{
@@ -2968,7 +2991,7 @@ void _OnTimer(HWND /*hWnd*/, UINT id)
 {
 	if (DELAY_TIMER_ID == id)
 	{
-		HRESULT hr = renderer.GIF_OnFrameNext();
+		HRESULT hr = renderer->GIF_OnFrameNext();
 		if (FAILED(hr)) { ErrorDescription(hr); }
 	}
 }
@@ -3124,7 +3147,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			if (HTCLIENT == LOWORD(lParam))
 			{
-				(void)SetCursor(renderer.Pannable ? hCursorHand : hCursorArrow);
+				(void)SetCursor(renderer->Pannable ? hCursorHand : hCursorArrow);
 
 				return TRUE;
 			}

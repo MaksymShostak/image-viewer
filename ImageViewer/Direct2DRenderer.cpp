@@ -2094,7 +2094,7 @@ HRESULT Direct2DRenderer::OnResize(UINT width, UINT height)
 	HRESULT hr = DXGI_ERROR_INVALID_CALL;
 
 	// If the size of the render target has actually changed
-	if (_Direct2DRenderTargetSize.width != width && _Direct2DRenderTargetSize.height != height)
+	if (_Direct2DRenderTargetSize.width != width || _Direct2DRenderTargetSize.height != height)
 	{
 		CalculateBitmapTranslatePoint(D2D1::SizeU(width, height));
 

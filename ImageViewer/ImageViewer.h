@@ -1,6 +1,8 @@
 #pragma once
 
 #include "resource.h"
+#include "HRESULT.h"
+#include "Direct2DRenderer.h"
 
 struct COMMONITEMDIALOGOPEN
 {
@@ -80,6 +82,7 @@ DELETEFILEWITHIFO g_deletefilewithifo;
 extern UINT const DELAY_TIMER_ID = 1U;    // Global ID for the timer, only one timer is used
 SORTBY g_SortByCurrent = SORTBYNAME;
 bool g_SortByAscending = true;
+Direct2DRenderer* renderer;
 
 // Forward declarations of functions included in this code module:
 void _OnCommand_ID_FILE_ACTUALSIZE(HWND hWnd);

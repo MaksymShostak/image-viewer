@@ -3,7 +3,6 @@
 #include <dwrite_1.h>
 #include <Wincodecsdk.h> // IWICMetadataBlockWriter
 #include <Icm.h> // GetStandardColorSpaceProfileW
-#include <comdef.h>
 #include <d3d11_1.h>
 
 extern void ErrorDescription(HRESULT hr);
